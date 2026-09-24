@@ -28,7 +28,7 @@ function updateCargoLock() {
   const content = readFileSync(path, "utf8");
   writeFileSync(
     path,
-    content.replace(/(\[\[package\]\]\nname = "bloom"\nversion = ")[^"]*(")/, `$1${version}$2`)
+    content.replace(/(\[\[package\]\]\r?\nname = "bloom"\r?\nversion = ")[^"]*(")/, `$1${version}$2`)
   );
 }
 
@@ -44,4 +44,4 @@ for (const file of ['src-tauri/app.manifest', 'packaging/AppxManifest.xml']) {
   writeFileSync(path,text);
 }
 
-console.log(`Bumped package.json, tauri.conf.json, Cargo.toml and Cargo.lock to ${version}`);
+console.log(`Bumped package, Tauri, Cargo and Windows manifest versions to ${version}`);

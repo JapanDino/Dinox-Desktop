@@ -1,4 +1,6 @@
-# Dinox Desktop 4.0.0
+# Dinox Desktop 4.0.1
+
+Maintenance update: the release version helper now handles Windows CRLF files and updates all native manifests consistently. This release also exercises the signed upgrade path from 4.0.0.
 
 The first public Dinox Desktop release continues the Bloom Personal desktop fork.
 
