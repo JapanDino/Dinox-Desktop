@@ -7,6 +7,12 @@ test('release metadata uses the matching version, repository and Windows target'
  expect(m.platforms['windows-x86_64'].signature).toBe('fixture-signature');
  expect(()=>manifest('4.0.1-beta','sig')).toThrow();expect(()=>manifest('4.0.1','')).toThrow();
 });
+
+test('unattended updates do not wait for an installer language dialog',()=>{
+ const config=JSON.parse(readFileSync('src-tauri/tauri.conf.json','utf8'));
+ expect(config.bundle.windows.nsis.displayLanguageSelector).toBe(false);
+ expect(config.plugins.updater.windows.installMode).toBe('quiet');
+});
 test('shipping updater has no original Bloom endpoint and requires its own public key',()=>{
  const config=JSON.parse(readFileSync('src-tauri/tauri.conf.json','utf8'));
  expect(config.plugins.updater.endpoints).toEqual(['https://github.com/JapanDino/Dinox-Desktop/releases/latest/download/latest.json']);

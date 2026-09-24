@@ -1,6 +1,8 @@
-# Dinox Desktop 4.0.1
+# Dinox Desktop 4.0.2
 
-Maintenance update: the release version helper now handles Windows CRLF files and updates all native manifests consistently. This release also exercises the signed upgrade path from 4.0.0.
+Fixes an installer language dialog that blocked automatic updates. Updates now run without installer prompts; the application language remains configurable in Settings. The release helper also handles Windows CRLF version files consistently.
+
+Version 4.0.1 was withdrawn after the installation test exposed the dialog. Use 4.0.2 or newer.
 
 The first public Dinox Desktop release continues the Bloom Personal desktop fork.
 

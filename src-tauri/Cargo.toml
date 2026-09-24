@@ -1,6 +1,6 @@
 [package]
 name = "bloom"
-version = "4.0.1"
+version = "4.0.2"
 description = "Dinox desktop shell for Windows 11"
 authors = ["JapanDino", "sehaz (original Bloom)"]
 edition = "2021"
