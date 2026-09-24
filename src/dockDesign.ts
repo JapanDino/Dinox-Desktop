@@ -1,0 +1,15 @@
+export const dockDefaults={preset:'glass',size:44,gap:10,padding:10,offset:12,radius:22,iconRadius:13,opacity:88,blur:18,shadow:32,background:'#1c2028',accent:'#b7a6ff',align:'center',indicator:'line',hover:'lift',labels:false,separators:true,showStart:true,showBell:true};
+export type DockDesign=typeof dockDefaults;
+const number=(v:unknown,d:number,min:number,max:number)=>typeof v==='number'&&Number.isFinite(v)?Math.min(max,Math.max(min,Math.round(v))):d;
+const choice=(v:unknown,d:string,values:string[])=>typeof v==='string'&&values.includes(v)?v:d;
+const color=(v:unknown,d:string)=>typeof v==='string'&&/^#[0-9a-f]{6}$/i.test(v)?v:d;
+export function parseDockDesign(raw:string):DockDesign {
+ let v:any={};try{v=JSON.parse(raw);if(!v||typeof v!=='object')v={};}catch{}
+ const d=dockDefaults;
+ return {preset:choice(v.preset,d.preset,['glass','graphite','light','classic','custom']),size:number(v.size,d.size,28,64),gap:number(v.gap,d.gap,2,20),padding:number(v.padding,d.padding,4,18),offset:number(v.offset,d.offset,0,28),radius:number(v.radius,d.radius,0,32),iconRadius:number(v.iconRadius,d.iconRadius,0,22),opacity:number(v.opacity,d.opacity,45,100),blur:number(v.blur,d.blur,0,28),shadow:number(v.shadow,d.shadow,0,60),background:color(v.background,d.background),accent:color(v.accent,d.accent),align:choice(v.align,d.align,['left','center','right']),indicator:choice(v.indicator,d.indicator,['dot','line','none']),hover:choice(v.hover,d.hover,['lift','zoom','none']),labels:typeof v.labels==='boolean'?v.labels:d.labels,separators:typeof v.separators==='boolean'?v.separators:d.separators,showStart:typeof v.showStart==='boolean'?v.showStart:d.showStart,showBell:typeof v.showBell==='boolean'?v.showBell:d.showBell};
+}
+export const dockPresets:Record<string,Partial<DockDesign>>={glass:{...dockDefaults},graphite:{...dockDefaults,preset:'graphite',background:'#15171c',opacity:100,blur:0,shadow:20,radius:16,indicator:'dot'},light:{...dockDefaults,preset:'light',background:'#f4f5f7',accent:'#6350b8',opacity:96,shadow:20},classic:{...dockDefaults,preset:'classic',size:36,gap:12,padding:8,offset:0,radius:18,background:'#08090b',opacity:94,indicator:'dot'}};
+export function dockText(background:string){const rgb=background.slice(1).match(/../g)!.map(x=>parseInt(x,16));return rgb[0]*.299+rgb[1]*.587+rgb[2]*.114>155?'#20242d':'#f4f5f7';}
+export function dockVariables(d:DockDesign){return {'--dock-size':`${d.size}px`,'--dock-gap':`${d.gap}px`,'--dock-padding':`${d.padding}px`,'--dock-offset':`${d.offset}px`,'--dock-icon-radius':`${d.iconRadius}px`,'--dock-radius':`${d.radius}px`,'--dock-surface':`${d.background}${Math.round(d.opacity*2.55).toString(16).padStart(2,'0')}`,'--dock-accent':d.accent,'--dock-text':dockText(d.background),'--dock-logo-filter':dockText(d.background)==='#20242d'?'invert(1) brightness(.2)':'none','--dock-shadow':`${d.shadow}px`,'--dock-blur':`${d.blur}px`};}
+
+export function bloomDockDesign(d:DockDesign):DockDesign{return {...d,background:"#000000",accent:"#f5f5f5",opacity:100,blur:0,shadow:24};}

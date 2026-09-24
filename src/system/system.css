@@ -1,0 +1,69 @@
+.system-strip{display:flex;align-items:center;justify-content:center;gap:4px;flex-shrink:0;height:var(--dock-size);color:var(--dock-text)}
+.system-strip button{border:0;background:transparent;color:inherit;display:flex;align-items:center;justify-content:center;gap:7px;height:min(36px,var(--dock-size));border-radius:9px;padding:0;cursor:pointer;flex-shrink:0;font:inherit}
+.system-strip button:hover,.system-strip button[aria-expanded=true]{background:color-mix(in srgb,var(--dock-text) 11%,transparent)}
+.system-strip button:focus-visible,.system-panel button:focus-visible{outline:2px solid var(--dock-accent);outline-offset:2px}
+.system-strip .system-language{width:36px;font-size:11px;font-weight:600;letter-spacing:.3px}.system-strip .system-quick{padding:0 8px;flex:1}.system-strip .system-tray{width:32px}.system-battery{display:flex;align-items:center;gap:4px}.system-battery small{font-size:10px;font-variant-numeric:tabular-nums}
+.system-panel{position:fixed;z-index:2000;box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;padding:18px;border-radius:22px;border:1px solid color-mix(in srgb,var(--dock-text) 15%,transparent);background:var(--system-surface,#1c2028);color:var(--dock-text,#f4f5f7);box-shadow:0 18px 55px #0006;font:12px/1.45 'Segoe UI',sans-serif;scrollbar-width:thin;scrollbar-color:#8885 transparent;user-select:none}
+.system-panel *{box-sizing:border-box}.system-panel button{font:inherit;color:inherit;border:0;cursor:pointer;background:transparent}.system-panel button:disabled,.system-panel input:disabled{opacity:.4;cursor:default}.system-panel>header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.system-panel>header strong{display:block;font-size:15px;font-weight:600}.system-panel>header span{font-size:11px;opacity:.55}.system-panel>header button{display:grid;place-items:center;width:29px;height:29px;border-radius:9px}.system-panel>header button:hover{background:#8882}
+.system-connections{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.system-connections button{display:flex;align-items:center;gap:9px;text-align:left;border:1px solid color-mix(in srgb,var(--dock-text) 9%,transparent);background:color-mix(in srgb,var(--dock-accent) 10%,transparent);border-radius:13px;padding:12px 10px}.system-connections button>svg:first-child{width:20px;color:var(--dock-accent);flex-shrink:0}.system-connections button>svg:last-child{margin-left:auto;opacity:.5}.system-connections span{font-weight:600}.system-connections small,.system-info-row small{display:block;font-size:10px;opacity:.6;font-weight:400;margin-top:2px}
+.system-slider{padding:12px 0;border-top:1px solid color-mix(in srgb,var(--dock-text) 9%,transparent)}.system-slider>div:first-child{display:flex;align-items:center;gap:10px;margin-bottom:9px}.system-slider>div:first-child>button{padding:0;display:grid;place-items:center}.system-slider label{flex:1}.system-slider output{font-size:11px;opacity:.6;font-variant-numeric:tabular-nums}.system-slider input{display:block;width:100%;height:18px;margin:0;accent-color:var(--dock-accent);cursor:pointer}.system-links{display:flex;justify-content:space-between;gap:8px;margin-top:8px;align-items:center;font-size:10px}.system-links button{display:flex;align-items:center;gap:4px;padding:4px 0;font-size:10px;opacity:.75}.system-links>span{opacity:.5}.system-links button:hover{opacity:1;text-decoration:underline}
+.system-info-row{display:flex;gap:8px;margin:1px 0 14px}.system-info-row button{display:flex;align-items:center;gap:9px;text-align:left;flex:1;border-radius:10px;padding:9px;background:color-mix(in srgb,var(--dock-text) 5%,transparent)}.system-info-row button>svg{opacity:.7}.system-info-row span{font-size:12px;font-weight:600}
+.system-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--dock-text) 9%,transparent)}.system-shortcuts button{display:flex;align-items:center;gap:8px;text-align:left;padding:8px 5px;border-radius:8px;font-size:11px;white-space:nowrap}.system-shortcuts button:hover,.system-info-row button:hover{background:#8882}.system-panel footer{display:flex;justify-content:space-between;gap:6px;padding-top:13px;margin-top:10px;border-top:1px solid color-mix(in srgb,var(--dock-text) 9%,transparent)}.system-panel footer button{display:flex;align-items:center;gap:5px;font-size:10px;padding:4px 0;opacity:.65}.system-panel footer button:hover{opacity:1}.system-error{padding:9px 10px;margin:0 0 12px;border-radius:9px;color:inherit;background:#cf704f22;font-size:11px}
+@media(prefers-reduced-motion:reduce){.system-panel,.system-strip *{transition:none!important}}
+/* Match the quiet monochrome status glyphs in Bloom's upper panel. */
+.system-strip{gap:3px;color:color-mix(in srgb,var(--dock-text) 90%,transparent)}
+.system-strip button{height:min(32px,var(--dock-size));border-radius:10px;transition:background .16s ease,color .16s ease}
+.system-strip button:hover,.system-strip button[aria-expanded=true]{background:color-mix(in srgb,var(--dock-text) 7%,transparent);color:var(--dock-text)}
+.system-strip button>svg{stroke-width:1.8;flex-shrink:0}
+.system-strip .system-language{font-size:10px;font-weight:650;letter-spacing:.55px}
+.system-strip .system-quick{gap:10px;padding:0 10px}
+.system-battery{gap:2px}.system-battery small{font-size:10px;font-weight:500;letter-spacing:-.15px}
+.system-battery-glyph{display:inline-flex;align-items:center;position:relative;flex-shrink:0}
+.system-battery-glyph .system-charge-bolt{position:absolute;left:6px;filter:drop-shadow(0 0 1px #333)}
+.system-panel .lucide{stroke-width:1.7;flex-shrink:0}
+.system-strip .system-tray svg{width:15px;height:15px;stroke-width:1.7;opacity:.7}
+/* Fit the native 600px dock window without hiding the heading or footer. */
+.system-panel{padding:16px}
+.system-panel>header{margin-bottom:12px}.system-panel>header span{display:none}
+.system-connections{margin-bottom:10px}.system-connections button{padding:10px}
+.system-slider{padding:9px 0}.system-slider>div:first-child{margin-bottom:6px}
+.system-links{margin-top:5px}.system-info-row{margin-bottom:10px}
+.system-shortcuts{padding-top:7px}.system-shortcuts button{padding:7px 5px}
+.system-panel footer{padding-top:9px;margin-top:7px}
+
+/* Bluetooth continues the original Bloom black/white surface and dock tokens. */
+.system-panel>.bluetooth-heading{gap:10px;margin-bottom:18px}.bluetooth-heading strong{flex:1}
+.bluetooth-power{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 2px 18px;border-bottom:1px solid color-mix(in srgb,var(--dock-text) 10%,transparent)}
+.bluetooth-power-label{display:flex;align-items:center;gap:13px}.bluetooth-power-label strong{display:block;font-size:14px;font-weight:600}.bluetooth-power-label span{display:block;opacity:.55;font-size:11px;margin-top:2px}
+.system-panel .bluetooth-switch{width:38px;height:22px;flex-shrink:0;border-radius:12px;background:color-mix(in srgb,var(--dock-text) 20%,transparent);padding:3px;display:flex;align-items:center;transition:background .15s ease}
+.bluetooth-switch span{width:16px;height:16px;border-radius:50%;background:var(--dock-text);transition:transform .15s ease}.system-panel .bluetooth-switch[aria-checked=true]{background:var(--dock-accent)}.bluetooth-switch[aria-checked=true] span{transform:translateX(16px);background:var(--system-surface)}
+.bluetooth-list-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:15px 2px 7px;color:color-mix(in srgb,var(--dock-text) 55%,transparent);font-size:11px}.bluetooth-list-heading button{display:grid;place-items:center;width:27px;height:27px;border-radius:8px}.bluetooth-list-heading button:hover{background:#8882}
+.bluetooth-devices{margin:0;padding:0;list-style:none}.bluetooth-device{display:flex;align-items:center;gap:11px;min-height:58px;padding:10px 2px}.bluetooth-device-icon{display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:color-mix(in srgb,var(--dock-text) 6%,transparent);flex-shrink:0}.bluetooth-device>div{min-width:0;flex:1}.bluetooth-device strong{display:block;font-size:12px;font-weight:500;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.bluetooth-device div>span{display:block;opacity:.5;font-size:10px;margin-top:3px}.bluetooth-device>svg{opacity:.6}.bluetooth-saved{border-top:1px solid #8882;margin-top:6px;padding-top:5px}
+.bluetooth-empty{padding:16px 3px 20px;line-height:1.65;opacity:.6;font-size:12px}.bluetooth-hint{font-size:10px;line-height:1.6;opacity:.5;margin:9px 2px 0}.system-panel .bluetooth-add{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:11px;border-radius:11px;margin-top:15px;background:color-mix(in srgb,var(--dock-text) 8%,transparent)}.system-panel .bluetooth-add:hover{background:color-mix(in srgb,var(--dock-text) 13%,transparent)}
+.system-panel .bluetooth-footer{margin-top:17px}.bluetooth-connection-note{margin-top:6px}.system-panel .bluetooth-footer button{font-size:10px;white-space:normal;text-align:left}
+@media(prefers-reduced-motion:reduce){.bluetooth-switch,.bluetooth-switch span{transition:none!important}}
+.wifi-networks{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}
+.wifi-network{display:flex!important;align-items:center;gap:12px;width:100%;padding:13px 10px!important;text-align:left;border-radius:12px!important;min-height:66px}
+.wifi-network:hover:not(:disabled){background:rgba(255,255,255,.07)}
+.wifi-network:disabled{opacity:.75;cursor:default}
+.wifi-network-info{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.wifi-network-info strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wifi-network-info small{font-size:11px;color:var(--dock-muted,#aaa);line-height:1.4}
+.wifi-signal{width:26px;flex-shrink:0;position:relative;display:flex;align-items:center}
+.wifi-signal svg+svg{position:absolute;right:-2px;bottom:-5px;background:var(--system-surface,#000)}
+.wifi-signal-value{font-size:11px;color:var(--dock-muted,#aaa);flex-shrink:0}
+.system-panel .wifi-network[data-connected="true"]{opacity:1;color:var(--dock-text,#fff);background:rgba(255,255,255,.04)}
+.wifi-connect-form{margin:12px 0;padding:14px;border:1px solid #303030;border-radius:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.wifi-connect-form>strong{overflow-wrap:anywhere}.wifi-connect-form label{font-size:12px;display:flex;flex-direction:column;gap:8px}
+.wifi-connect-form input[type=password]{box-sizing:border-box;width:100%;min-width:0;padding:10px;background:#181818;color:#fff;border:1px solid #444;border-radius:8px;font:inherit}
+.wifi-connect-form .wifi-remember{flex-direction:row;align-items:center;gap:8px}
+.wifi-cancel{align-self:center;padding:6px 12px!important}
+.layout-target{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--dock-muted,#aaa);font-size:11px;margin:8px 0 14px}
+.wifi-signal-value{display:flex;align-items:center;gap:5px}
+.system-panel .wifi-connect-form{margin:8px 0}
+.system-panel .wifi-connect-form input:focus-visible{outline:2px solid var(--dock-accent,#fff);outline-offset:2px}
+.system-panel .wifi-connect-form small{color:var(--dock-muted,#aaa);font-weight:400;line-height:1.5}
+.system-links,.system-panel footer{flex-wrap:wrap}
+.system-info-row>button{min-width:0}.system-info-row>button>span{min-width:0;overflow-wrap:anywhere}
+.system-panel>header{position:sticky;top:-16px;z-index:2;background:var(--system-surface,#000);padding:8px 0;margin-top:-8px;box-shadow:0 5px 8px var(--system-surface,#000)}
+.wifi-connect-form{scroll-margin-top:54px}

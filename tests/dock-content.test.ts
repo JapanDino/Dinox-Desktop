@@ -1,0 +1,10 @@
+import {test,expect} from 'bun:test';
+import {mergePins,movePin,parseDockContent,type PinnedApp} from '../src/dock/content';
+import {noticeMatchesApp} from '../src/notifications/attention';
+import {freshNotices,noticeKey} from '../src/notifications/model';
+const a=(name:string,path=name):PinnedApp=>({name,path,icon:null,is_running:false});
+test('mode parsing preserves classic and validates custom behavior',()=>{expect(parseDockContent('null')).toEqual({mode:'classic',showRunning:true});expect(parseDockContent('{"mode":"personal","showRunning":false}')).toEqual({mode:'personal',showRunning:false});});
+test('import merges without overwriting order or duplicating case/slashes',()=>{expect(mergePins([a('User','C:/Apps/T.exe')],[a('Win','c:\\apps\\t.exe'),a('New'),a('New')]).map(x=>x.name)).toEqual(['User','New']);});
+test('keyboard reorder is bounded and nonmutating',()=>{const pins=[a('A'),a('B')];expect(movePin(pins,0,-1)).toBe(pins);expect(movePin(pins,0,1).map(x=>x.name)).toEqual(['B','A']);expect(pins[0].name).toBe('A');});
+test('Telegram links shortcut executable and real app without substring title matches',()=>{const n={app_id:'TelegramDesktop',app_name:'Telegram Desktop'};expect(noticeMatchesApp(n,{path:'C:\\Apps\\Telegram.exe'})).toBe(true);expect(noticeMatchesApp(n,{path:'Telegram.lnk',executable:'C:\\Apps\\Telegram.exe'})).toBe(true);expect(noticeMatchesApp(n,{name:'Telegram website - Edge',path:'msedge.exe'})).toBe(false);expect(noticeMatchesApp({...n,app_id:'bloom-demo'},{name:'Telegram'})).toBe(false);});
+test('replacement message in the same Windows toast is new, unchanged is not',()=>{const n={id:1,app_id:'tg',app_name:'Telegram',created:1,title:'Alice',body:'First'};expect(freshNotices([n],[n])).toHaveLength(0);const update={...n,body:'Second'};expect(noticeKey(update)).toBe(noticeKey(n));expect(freshNotices([n],[update])).toEqual([update]);});

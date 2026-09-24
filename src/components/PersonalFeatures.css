@@ -1,0 +1,8 @@
+.personal-actions { display: flex; justify-content: center; align-items: center; gap: 8px; height: 36px; position: relative; }
+.personal-actions button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--bloom-border, #ffffff24); border-radius: 9px; background: #ffffff0d; color: var(--bloom-text, white); padding: 6px 10px; font-size: 11px; cursor: pointer; }
+.personal-actions button:hover { background: #ffffff24; }
+.personal-actions button:focus-visible, .calendar-nav:focus-visible, .calendar-container:focus-visible { outline: 2px solid #81b4ff; outline-offset: 2px; }
+.personal-error { position: absolute; top: 100%; color: #ffb4b4; font-size: 10px; }
+.calendar-header { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+.calendar-nav { color: inherit; background: transparent; border: 0; cursor: pointer; border-radius: 5px; padding: 4px 6px; }
+.calendar-nav:hover { background: #ffffff20; }

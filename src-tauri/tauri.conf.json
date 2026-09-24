@@ -1,0 +1,143 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Dinox Desktop",
+  "version": "4.0.0",
+  "identifier": "com.japandino.bloompersonal",
+  "build": {
+    "beforeDevCommand": "bun run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "bun run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Dinox",
+        "width": 1920,
+        "height": 760,
+        "x": 0,
+        "y": 0,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "closable": false,
+        "alwaysOnTop": true,
+        "visibleOnAllWorkspaces": true,
+        "focus": false,
+        "skipTaskbar": true,
+        "shadow": false,
+        "visible": false,
+        "dragDropEnabled": false
+      },
+      {
+        "label": "settings",
+        "title": "Settings",
+        "url": "settings.html",
+        "width": 620,
+        "height": 480,
+        "decorations": false,
+        "transparent": true,
+        "resizable": true,
+        "maximizable": false,
+        "minimizable": false,
+        "closable": false,
+        "alwaysOnTop": false,
+        "visibleOnAllWorkspaces": false,
+        "focus": true,
+        "skipTaskbar": false,
+        "shadow": true,
+        "visible": false,
+        "center": true,
+        "minWidth": 360,
+        "minHeight": 360
+      },
+      {
+        "label": "overlay",
+        "title": "Overlay",
+        "url": "overlay.html",
+        "width": 1920,
+        "height": 1080,
+        "x": 0,
+        "y": 0,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "closable": false,
+        "alwaysOnTop": true,
+        "visibleOnAllWorkspaces": true,
+        "focus": false,
+        "skipTaskbar": true,
+        "shadow": false,
+        "visible": false
+      },
+      {
+        "label": "dock",
+        "title": "Dinox Dock",
+        "url": "dock.html",
+        "width": 1920,
+        "height": 600,
+        "x": 0,
+        "y": 480,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "closable": false,
+        "alwaysOnTop": true,
+        "visibleOnAllWorkspaces": true,
+        "focus": false,
+        "skipTaskbar": true,
+        "shadow": false,
+        "visible": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://api.open-meteo.com https://geocoding-api.open-meteo.com https://ipapi.co https://ip-api.com; worker-src 'self' blob:"
+    }
+  },
+  "bundle": {
+    "windows": {
+      "nsis": {
+        "languages": [
+          "Russian",
+          "English"
+        ],
+        "displayLanguageSelector": true,
+        "installMode": "currentUser"
+      }
+    },
+    "active": true,
+    "createUpdaterArtifacts": true,
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "JapanDino",
+    "homepage": "https://github.com/JapanDino/Dinox-Desktop",
+    "shortDescription": "Dinox desktop shell",
+    "category": "Utility"
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/JapanDino/Dinox-Desktop/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IERDN0IzMTlGMjE3QUQyQzMKUldURDBub2huekY3M0FCdUh2NDhtZzVlbDlHbkZmakZsNG05WG9seXNNejFHUmg4c2tmeFVvdEMK",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}

@@ -1,0 +1,59 @@
+/* One surface language for Bloom's upper panel, calendar, dock and controls.
+   Scoped mode leaves every saved custom palette intact when switched off. */
+:root[data-bloom-unified=true]{--bloom-bg:#000!important;--bloom-bg-expanded:#000!important;--bloom-text:#f5f5f5!important;--bloom-text-secondary:#a3a3a3!important;--bloom-text-muted:#a3a3a3!important;--bloom-border:#ffffff14!important;--bloom-accent:#f5f5f5!important;color-scheme:dark}
+[data-bloom-unified=true] .bloom{--notch-bg:#000!important;color:#f5f5f5}
+[data-bloom-unified=true] .bloom-calendar,[data-bloom-unified=true] .bloom-notifications{background:#000;color:#f5f5f5;--cal-text:#f5f5f5;--cal-muted:#a3a3a3}
+[data-bloom-unified=true] .system-panel{font-family:Inter,"Segoe UI",sans-serif;background:#000;border:1px solid #ffffff14;border-radius:26px;color:#f5f5f5;box-shadow:0 12px 30px #0003;padding:16px 20px}
+[data-bloom-unified=true] .system-panel>header strong{font-size:15px;letter-spacing:-.25px;font-weight:600}
+[data-bloom-unified=true] .system-panel>header{margin-bottom:10px}
+[data-bloom-unified=true] .system-connections{gap:8px;margin-bottom:8px}
+[data-bloom-unified=true] .system-connections button{background:#111;border:0;border-radius:10px;padding:10px;gap:9px}
+[data-bloom-unified=true] .system-connections button>svg:first-child{color:inherit;width:18px}
+[data-bloom-unified=true] .system-connections small,[data-bloom-unified=true] .system-info-row small{font-size:11px;opacity:1;color:#a3a3a3}
+[data-bloom-unified=true] .system-panel .lucide{stroke-width:2}
+[data-bloom-unified=true] .system-slider{padding:10px 0;border-color:#ffffff14}
+[data-bloom-unified=true] .system-slider label{font-size:13px;font-weight:500}
+[data-bloom-unified=true] .system-slider output{font-size:12px;opacity:1;color:#a3a3a3}
+[data-bloom-unified=true] .system-links button,[data-bloom-unified=true] .system-links>span{font-size:11px;opacity:1;color:#a3a3a3}
+[data-bloom-unified=true] .system-info-row{margin:0 0 8px}
+[data-bloom-unified=true] .system-info-row button{background:transparent;padding:8px 5px;border-radius:8px}
+[data-bloom-unified=true] .system-info-row button>svg{opacity:1}
+[data-bloom-unified=true] .system-shortcuts{border-color:#ffffff14;gap:2px 8px}
+[data-bloom-unified=true] .system-shortcuts button{font-size:11px;padding:8px 4px}
+[data-bloom-unified=true] .system-panel footer{border-color:#ffffff14;margin-top:6px;padding-top:8px}
+[data-bloom-unified=true] .system-panel footer button{font-size:11px;opacity:1;color:#a3a3a3}
+[data-bloom-unified=true] .system-panel button:hover{background:#202020;color:#fff}
+[data-bloom-unified=true] .system-links button:hover,[data-bloom-unified=true] .system-panel footer button:hover{background:transparent;color:#fff}
+[data-bloom-unified=true] .system-strip{font-family:Inter,"Segoe UI",sans-serif;color:#f5f5f5}
+[data-bloom-unified=true] .system-strip button>svg{stroke-width:2}
+[data-bloom-unified=true] .system-strip .system-language{font-size:11px;letter-spacing:.15px}
+[data-bloom-unified=true] .system-battery small{font-size:11px;font-weight:500}
+[data-bloom-unified=true] .dock-personal .dock{border-color:#ffffff14;box-shadow:0 8px 24px #0003}
+[data-bloom-unified=true] .dock-personal .dock-icon,[data-bloom-unified=true] .dock-preview-item>div{background:transparent}
+[data-bloom-unified=true] .dock-personal .dock-icon:hover{background:#ffffff0c}
+[data-bloom-unified=true] .dock-personal .dock-icon svg{stroke-width:2}
+[data-bloom-unified=true] .dock-personal .dock-divider{background:#ffffff14;height:22px}
+[data-bloom-unified=true] .dock-design-preview{background:#111}
+[data-bloom-unified=true] .dock-preset-grid .selected{border-color:#ffffff55;background:#ffffff0a}
+[data-bloom-unified=true] .dock-range-grid input{accent-color:#f5f5f5}
+[data-bloom-unified=true] .notice-card{background:#111!important;border:1px solid #ffffff14!important;border-radius:12px!important;padding:14px 16px;color:#f5f5f5;box-shadow:none!important;--notice-accent:#f5f5f5!important}
+[data-bloom-unified=true] .notice-app-icon,[data-bloom-unified=true] .notice-app-icon.telegram{background:transparent;color:#f5f5f5;width:20px;height:20px;border-radius:0}
+[data-bloom-unified=true] .notice-source{font-size:11px;color:#a3a3a3}
+[data-bloom-unified=true] .notice-source time{font-size:10px;opacity:1}
+[data-bloom-unified=true] .notice-card h3{font-size:14px;font-weight:600;margin-top:10px}
+[data-bloom-unified=true] .notice-card p{font-size:12px;color:#b5b5b5}
+[data-bloom-unified=true] .bloom-notifications header strong{font-size:14px;font-weight:600}
+[data-bloom-unified=true] .bloom-notifications .lucide{stroke-width:2}
+[data-bloom-unified=true] .bloom-notifications footer button{background:#111;border-color:#ffffff14;font-size:11px}
+[data-bloom-unified=true] .personal-actions button{background:#111;color:#f5f5f5;border-color:#ffffff14}
+[data-bloom-unified=true] .cal-primary{background:#f5f5f5;color:#111!important}
+[data-bloom-unified=true] .cal-icon-button svg,[data-bloom-unified=true] .cal-text-button svg{stroke-width:2}
+
+:root[data-bloom-unified=true]{--bloom-group-bg:#ffffff06!important;--bloom-scrollbar-thumb:#ffffff30!important}
+[data-bloom-unified=true] .settings-container{font-family:Inter,"Segoe UI",sans-serif}
+[data-bloom-unified=true] .sidebar-tab.active,[data-bloom-unified=true] .sidebar-tab:hover{background:#ffffff0d}
+[data-bloom-unified=true] .close-btn:hover{background:#202020;color:#fff}
+[data-bloom-unified=true] .about-logo{filter:none}
+[data-bloom-unified=true] .volume-slider-bar,[data-bloom-unified=true] .brightness-slider-bar,[data-bloom-unified=true] .cc-classic-slider,[data-bloom-unified=true] .slider-track-premium{background:#ffffff20}
+
+[data-bloom-unified=true] .bloom-notifications,[data-bloom-unified=true] .notification-settings{--notice-accent:#f5f5f5}
