@@ -1,6 +1,8 @@
 <p align="center"><img src="public/dinox.svg" width="88" alt="Dinox"></p>
 <h1 align="center">Dinox Desktop</h1>
 <p align="center">A quieter Windows desktop. Your dock, calendar and daily controls, together.</p>
+<p align="center">English · <a href="README.ru.md">Русский</a></p>
+<p align="center"><a href="https://github.com/JapanDino/Dinox-Desktop/actions/workflows/ci.yml"><img src="https://github.com/JapanDino/Dinox-Desktop/actions/workflows/ci.yml/badge.svg" alt="Build checks"></a> <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-white" alt="GPL-3.0"></a></p>
 <p align="center"><a href="https://github.com/JapanDino/Dinox-Desktop/releases/latest">Download for Windows</a> · <a href="docs/DEVELOPMENT.md">Build from source</a> · <a href="docs/UPDATES.md">Updates</a> · <a href="https://github.com/JapanDino/Dinox-Desktop/issues">Report a problem</a></p>
 
 ![Dinox interface concept](docs/hero.svg)

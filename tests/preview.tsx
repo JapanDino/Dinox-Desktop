@@ -1,4 +1,5 @@
 import {WorkspaceDemo} from './WorkspaceDemo';
+import packageInfo from '../package.json';
 // Dev-only fixture harness; not included in production entrypoints.
 import {useState} from 'react';
 import Dock from '../src/Dock';
@@ -118,7 +119,8 @@ function emit(event:string,payload:unknown){for(const x of listeners.values())if
  if(command==='check_for_updates'){
   const query=new URLSearchParams(location.search);
   if(query.has('update-error'))throw 'Update server unavailable';
-  return query.has('update-available')?{available:true,version:'4.0.1',body:'Demo signed release'}:{available:false};
+  const nextVersion=packageInfo.version.replace(/\d+$/,part=>String(Number(part)+1));
+  return query.has('update-available')?{available:true,version:nextVersion,body:'Demo signed release'}:{available:false};
  }
  if(command==='install_update'){
   emit('auto-update-status',{status:'downloading',progress:35});
@@ -129,7 +131,7 @@ function emit(event:string,payload:unknown){for(const x of listeners.values())if
  if(command==='update_dock_rect'){document.documentElement.dataset.dockHitRect=JSON.stringify(args.rect);return;}
  if(command==='shell_status')return {recovered:false,replacing:false};
  if(command==='load_settings')return settings;
- if(command==='plugin:app|version')return '4.0.0';
+ if(command==='plugin:app|version')return packageInfo.version;
  if(command==='get_update_state')return {available:false};
  if(command==='get_network_speed')return [0,0];
  if(command==='get_volume')return .5;

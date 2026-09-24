@@ -6,17 +6,19 @@ The About page checks for updates and offers installation. Automatic installatio
 
 A network error is displayed as an error, not as “up to date”. Downloads must pass Tauri's cryptographic signature verification before the installer runs. The app rechecks the latest release before downloading, and prevents concurrent installs. Existing install location and settings are retained. Shell cleanup restores Windows work areas before updater exit.
 
+Since 4.0.2, updater installation is quiet and the NSIS language selector is disabled. Change the application language in Settings. Interactive installer dialogs must not be added to the unattended update path.
+
 ## For the maintainer
 
 1. Merge and test the desired code on `main`.
-2. Run `bun run bump 4.0.1` (substitute the next stable version).
+2. Run `bun run bump 4.0.3` (substitute the next stable version).
 3. Update `RELEASE_NOTES.md`, run tests/build, and commit the release changes.
 4. Push the commit, then create and push the exact version tag:
 
 ```powershell
-git tag v4.0.1
+git tag v4.0.3
 git push origin main
-git push origin v4.0.1
+git push origin v4.0.3
 ```
 
 An ordinary source push runs CI but **does not** update users. The tagged release workflow verifies version consistency, tests, builds an NSIS installer and signs it with `TAURI_SIGNING_PRIVATE_KEY`. It creates a draft, uploads all four artifacts, then publishes the completed release:
