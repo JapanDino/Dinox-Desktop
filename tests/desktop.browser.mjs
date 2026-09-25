@@ -1,0 +1,61 @@
+// Browser-only acceptance checks. The preview supplies synthetic Windows data.
+async function verifyDesktop(page){
+ const base='http://127.0.0.1:1439/personal-preview.html';const checks=[];
+ const check=(value,name)=>{if(!value)throw new Error(name);checks.push(name);};
+ const go=async(query)=>{await page.goto(base+query);};
+ const opened=()=>page.evaluate(()=>JSON.parse(document.documentElement.dataset.searchOpened||'null'));
+ const search=()=>page.getByRole('combobox',{name:'Поиск Dinox',exact:true});
+ await page.setViewportSize({width:1280,height:900});await go('?desktop=search');
+ await page.evaluate(()=>{localStorage.removeItem('dinox-v4-demo-settings');});await page.reload();
+ check(await page.locator('#launcher-results [role=option]').count()===6,'An empty launcher shows six clickable command hints');
+ await page.locator('#launcher-results [role=option]').filter({hasText:'Посчитать выражение'}).click();check(await search().inputValue()==='= ','Selecting a hint fills its prefix and retains input focus');
+ await search().fill('= (5 * 3) - 2');await page.locator('.calculator-result').waitFor();check((await page.locator('.calculator-result strong').innerText())==='13','Arithmetic results render inline');
+ await search().press('Enter');await page.waitForFunction(()=>document.documentElement.dataset.copiedCalculation==='13');check(true,'Enter copies the calculated result through the injected clipboard adapter');
+ await page.getByRole('button',{name:'Открыть поиск снова'}).click();await search().fill('= 1/0');await page.getByText('На ноль делить нельзя',{exact:true}).waitFor();check(await page.locator('#launcher-results [role=option]').count()===0,'Divide by zero produces an explanation instead of a selectable result');
+ await search().fill('tele');await page.locator('#launcher-results [role=option]').filter({hasText:'Telegram'}).waitFor();
+ check(await opened()===null,'Typing does not open an application or send a web query');
+ await search().press('Enter');await page.waitForFunction(()=>!!document.documentElement.dataset.searchOpened);
+ check((await opened()).kind==='app','Enter opens the selected application');
+ await page.getByRole('button',{name:'Открыть поиск снова'}).click();
+ await search().fill('!!');await page.locator('#launcher-results [role=option]').filter({hasText:'Telegram'}).waitFor();check(true,'Recent history contains a successfully opened application');
+ await page.getByLabel('Настройки поиска',{exact:true}).click();await page.getByRole('combobox',{name:'Поисковая система'}).selectOption('yandex');
+ await page.getByLabel('Настройки поиска',{exact:true}).click();await search().fill('> Привет & мир #1');await search().press('Enter');await page.waitForFunction(()=>JSON.parse(document.documentElement.dataset.searchOpened||'{}').kind==='web');
+ check((await opened()).engine==='yandex'&&(await opened()).target==='Привет & мир #1','Explicit web search retains Unicode and special characters and chosen engine');
+ await go('?desktop=search');await search().fill('!!');check(!(await page.locator('#launcher-results').innerText()).includes('Привет & мир'),'Web queries do not enter recent history');
+ await search().fill('? проект');await page.locator('#launcher-results [role=option]').filter({hasText:'План проекта.pdf'}).waitFor();check(!(await page.locator('#launcher-results').innerText()).includes('интернете'),'File prefix restricts results to files');
+ await search().fill('@');await page.locator('#launcher-results [role=option]').filter({hasText:'Настройки Dinox'}).waitFor();check(await page.locator('#launcher-results [role=option]').count()===3,'Command prefix offers Dinox actions');
+ await search().fill('. tele');await page.locator('#launcher-results [role=option]').filter({hasText:'Telegram'}).waitFor();check(await page.locator('#launcher-results [role=option]').count()===1,'Application prefix excludes web results');
+ await go('?desktop=search');await search().fill('проект');await page.locator('#launcher-results [role=option]').filter({hasText:'План проекта.pdf'}).waitFor();
+ await search().press('ArrowDown');check((await page.locator('#launcher-results [aria-selected=true]').innerText()).includes('Заметки'),'Arrow keys select another result');
+ await search().press('Enter');await page.waitForFunction(()=>!!document.documentElement.dataset.searchOpened);check((await opened()).kind==='file','Enter opens a file result');
+ await go('?desktop=search');await search().fill('slow');await page.waitForTimeout(450);await search().fill('проект');await page.locator('#launcher-results [role=option]').filter({hasText:'План проекта.pdf'}).waitFor();await page.waitForTimeout(800);
+ check(!(await page.locator('#launcher-results').innerText()).includes('Project notes.txt'),'An old slow search cannot replace a newer query');
+ await search().press('Escape');check(await page.getByRole('button',{name:'Открыть поиск снова'}).isVisible(),'Escape closes the launcher');
+ await go('?desktop=search&search-error&shortcut-conflict');await search().fill('проект');await page.getByText('Поиск файлов Windows недоступен.',{exact:false}).waitFor();
+ check(await page.locator('#launcher-results [role=option]').count()===1,'An unavailable file index leaves web search usable');
+ check((await page.locator('.launcher-privacy').innerText()).includes('Горячая клавиша занята'),'Shortcut conflict is visible');
+ await go('?desktop=search&open-error');await search().fill('tele');await search().press('Enter');await page.getByRole('alert').waitFor();check(await search().isVisible(),'A failed launch keeps the launcher and query available');
+ await go('?desktop=mixer');const music=page.getByRole('slider',{name:'Громкость: Музыка',exact:true});await music.waitFor();await music.focus();await music.press('Home');
+ await page.waitForFunction(()=>JSON.parse(document.documentElement.dataset.mixerCommand||'{}').volume===0);check(await music.inputValue()==='0','Keyboard changes individual app volume');
+ await page.getByRole('button',{name:'Выключить звук: Telegram',exact:true}).click();await page.getByRole('button',{name:'Включить звук: Telegram',exact:true}).waitFor();check(true,'App mute is confirmed by a fresh snapshot');
+ await page.getByRole('combobox',{name:'Устройство вывода'}).selectOption('headphones');await page.getByRole('button',{name:'Использовать по умолчанию'}).click();await page.getByText('Основной выход Windows',{exact:true}).waitFor();check(true,'Default output selection is read back');
+ check(await page.getByText('Запустите музыку или видео',{exact:false}).isVisible(),'An output with no app sessions has an explanation');
+ await go('?desktop=mixer&mixer-write-error');const master=page.getByRole('slider',{name:'Громкость: Общая громкость',exact:true});await master.waitFor();await master.focus();await master.press('Home');await page.getByRole('alert').waitFor();await page.waitForFunction(()=>document.querySelector('input[type=range]')?.value==='64');check(true,'A failed volume change rolls back to Windows state');
+ await go('?desktop=mixer&mixer-empty');await page.getByText('Устройства вывода не найдены.',{exact:false}).waitFor();check(await page.getByRole('slider').count()===0,'Missing audio hardware has no active volume controls');
+ await go('?desktop=layout');const date=page.getByRole('checkbox',{name:'Дата рядом со временем',exact:true});await date.waitFor();const before=await date.isChecked();await date.setChecked(!before);
+ check(await page.evaluate(()=>!document.documentElement.dataset.savedLayout),'Preview changes are not saved immediately');
+ await page.getByRole('button',{name:'Отменить',exact:true}).click();check(await date.isChecked()===before,'Cancel restores the original layout');
+ await date.setChecked(!before);await page.getByRole('button',{name:'Сохранить',exact:true}).click();await page.getByText('Сохранено',{exact:true}).waitFor();await page.reload();check(await date.isChecked()===!before,'Saved layout survives a reload');
+ await page.getByRole('button',{name:'Док',exact:true}).click();await page.getByRole('slider',{name:'Размер значков',exact:true}).fill('64');await page.getByRole('combobox',{name:'Расположение дока',exact:true}).selectOption('right');
+ check(await page.locator('.layout-dock').evaluate(el=>getComputedStyle(el).alignSelf)==='flex-end','Dock placement updates in the preview');
+ await go('?desktop=layout&save-error');await page.getByRole('checkbox',{name:'Дата рядом со временем',exact:true}).click();await page.getByRole('button',{name:'Сохранить',exact:true}).click();await page.getByRole('alert').waitFor();check(await page.getByRole('button',{name:'Сохранить',exact:true}).isEnabled(),'Failed save retains the draft and permits retry');
+ await go('?desktop=layout&layout-conflict');await page.getByRole('checkbox',{name:'Дата рядом со временем',exact:true}).click();await page.getByRole('button',{name:'Сохранить',exact:true}).click();await page.getByText('Настройки изменились в другом окне.',{exact:false}).waitFor();check(true,'Concurrent settings changes require a reload instead of overwriting');
+ for(const width of [390,620,1280])for(const section of ['search','mixer','layout']){
+  await page.setViewportSize({width,height:900});await go('?desktop='+section);await page.locator('.desktop-demo-panel').waitFor();
+  check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${section} fits a ${width}px viewport`);
+ }
+ await page.setViewportSize({width:1280,height:900});await go('?workspace&notifications-allowed');
+ await page.getByRole('button',{name:'Поиск Dinox',exact:true}).click();await search().waitFor();check(true,'Dock search button opens the launcher in the integrated demo');
+ await page.getByRole('button',{name:'Быстрые настройки',exact:true}).click();await page.getByRole('button',{name:'Микшер приложений',exact:true}).click();await page.getByRole('dialog',{name:'Микшер приложений',exact:true}).waitFor();check(true,'Quick settings opens the embedded mixer without leaving Dinox');
+ return {checks:checks.length,passed:checks};
+}

@@ -39,6 +39,7 @@ export default defineConfig(async () => ({
         overlay: "overlay.html",
         settings: "settings.html",
         dock: "dock.html",
+        launcher: "launcher.html",
       },
     },
   },

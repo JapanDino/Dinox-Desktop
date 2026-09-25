@@ -2180,6 +2180,8 @@ pub fn setup_display_change_monitor(app_handle: AppHandle) {
             if RegisterHotKey(Some(hwnd),0xB100,MOD_CONTROL|MOD_ALT|MOD_NOREPEAT,0x42).is_err() {
                 crate::diagnostics::record("Emergency hotkey Ctrl+Alt+B unavailable");
             }
+            crate::launcher::HOTKEY_WINDOW.store(hwnd.0 as isize,Ordering::Relaxed);
+            if let Some(app)=DISPLAY_MONITOR_HANDLE.get(){crate::launcher::register_hotkey(hwnd,app);}
             SHELL_HOOK_MESSAGE.store(RegisterWindowMessageA(windows::core::PCSTR(c"SHELLHOOK".as_ptr() as *const u8)), Ordering::Relaxed);
             if !RegisterShellHookWindow(hwnd).as_bool() {
                 crate::diagnostics::record("shell attention hook unavailable");
@@ -2202,6 +2204,11 @@ unsafe extern "system" fn display_monitor_proc(
     use windows::Win32::UI::WindowsAndMessaging::*;
     use windows::Win32::Foundation::LRESULT;
 
+    if msg==crate::launcher::REFRESH_HOTKEY{
+        if let Some(app)=DISPLAY_MONITOR_HANDLE.get(){crate::launcher::register_hotkey(hwnd,app);}
+        return LRESULT(1);
+    }
+
     let taskbar_created = RegisterWindowMessageW(windows::core::w!("TaskbarCreated"));
     if msg == taskbar_created {
         if let Some(app)=DISPLAY_MONITOR_HANDLE.get() {
@@ -2215,6 +2222,10 @@ unsafe extern "system" fn display_monitor_proc(
             let _=crate::commands::save_setting(app.clone(),"bloom-shell-mode".into(),serde_json::json!("compatible"));
             crate::shell_controller::request_refresh(app);
         }
+        return LRESULT(0);
+    }
+    if msg == WM_HOTKEY && wparam.0 == 0xB101 {
+        if let Some(app)=DISPLAY_MONITOR_HANDLE.get(){crate::launcher::toggle(app);}
         return LRESULT(0);
     }
     let shell_message = SHELL_HOOK_MESSAGE.load(Ordering::Relaxed);

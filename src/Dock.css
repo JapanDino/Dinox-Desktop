@@ -799,3 +799,5 @@ body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 .dock-icon[role=button]:focus-visible{outline:2px solid var(--dock-accent,#fff);outline-offset:4px;border-radius:var(--dock-icon-radius,12px)}
+
+.dock-search-button{width:var(--dock-size);height:var(--dock-size);flex-shrink:0;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--dock-text);border:0;border-radius:var(--dock-icon-radius);cursor:pointer}.dock-search-button:hover{background:#ffffff15}.dock-search-button:focus-visible{outline:2px solid currentColor;outline-offset:2px}

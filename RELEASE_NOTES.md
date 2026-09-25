@@ -1,14 +1,26 @@
-# Dinox Desktop 4.0.2
+# Dinox Desktop 4.1.0
 
-Fixes an installer language dialog that blocked automatic updates. Updates now run without installer prompts; the application language remains configurable in Settings. The release helper also handles Windows CRLF version files consistently.
+## Что нового
 
-Version 4.0.1 was withdrawn after the installation test exposed the dialog. Use 4.0.2 or newer.
+- **Быстрый поиск:** приложения, файлы из индекса Windows, команды, калькулятор и поиск в Google, Яндексе или Bing. Открывается отдельной строкой поверх рабочего стола.
+- **Свой хоткей:** Настройки → Основные → Поиск Dinox. Можно записать сочетание клавиш; занятое сочетание отмечается ошибкой и доступна повторная проверка. Настройки PowerToys и других программ автоматически не меняются.
+- **Микшер:** отдельная громкость и отключение звука приложений, выбор устройства вывода и его громкость.
+- **Редактор рабочего стола:** предпросмотр острова и дока, расположение индикаторов, дата, размеры и видимость. Изменения можно сохранить или отменить.
+- **Календарь:** события на весь день и длительные события отображаются полосами над сеткой часов. Многодневное событие больше не повторяется огромной карточкой в каждом дне. Пересечения распределяются по строкам; дополнительные события можно раскрыть.
+- Исправлены диапазоны дат, исключительная конечная дата событий на весь день и переходящие через границы недели события. Длительные проекты не вытесняют ближайшие встречи из виджета.
+- В режиме месяца убрана мешающая правая полоса прокрутки; колесо над календарной сеткой переключает месяцы без прокрутки всей панели.
 
-The first public Dinox Desktop release continues the Bloom Personal desktop fork.
+## English
 
-- Dinox branding, coordinated dark UI and Russian/English preferences.
-- Customizable dock and island, read-only calendar subscriptions, device controls and optional Windows notification integration.
-- Dedicated signed update channel. Updates are offered by default; automatic installation at startup is optional.
-- Taskbar restoration before updater exit; existing settings, install directory and notification identity are retained.
+- Floating search for apps, Windows-indexed filenames, commands, calculations and explicit web searches.
+- Custom search shortcuts with conflict reporting and retry, configured in Settings → General → Dinox search.
+- Per-application audio volume/mute and output-device selection.
+- Desktop layout preview with Save/Cancel for island indicators and dock appearance.
+- All-day and long events rendered as spanning bands above the week timeline, with overlap lanes, continuation markers and expandable overflow.
+- Correct date ranges and month-wheel navigation without scrolling the entire calendar panel.
 
-Windows 11 x64 is the primary target. Fresh EXE installs need an additional package identity and Windows permission to read other applications' notifications. Telegram's custom popups are not Windows notifications. ICS calendars are read-only. Device support and shell behavior vary; see the README and security notes before enabling optional integrations.
+## Installation and updates
+
+Download **Dinox-Desktop_4.1.0_x64-setup.exe** below. Existing Dinox installations can check for updates in **Settings → About**. Updates are offered by default; automatic installation at startup is optional. The updater verifies a cryptographic signature before installation. This is separate from Windows publisher/Authenticode signing.
+
+Windows 11 x64 is the primary target. Calendar subscriptions remain read-only, including Google and Yandex ICS feeds. File search uses the Windows index. The mixer does not yet route individual apps to different outputs. Notification capture still requires package identity and Windows permission; Telegram's independent custom popups are not Windows notifications. Device compatibility and battery-life measurements remain limited. See the README and [desktop tools guide](https://github.com/JapanDino/Dinox-Desktop/blob/v4.1.0/docs/DESKTOP-TOOLS.md).

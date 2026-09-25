@@ -1,4 +1,5 @@
 import {LanguageSetting} from '../i18n/LanguageSetting';
+import {SearchSettings} from './SearchSettings';
 import {tr} from '../i18n/core';
 import { Power, Clock, BatteryWarning, RefreshCw, LogOut } from "lucide-react";
 import { SettingRow } from "./SettingRow";
@@ -16,6 +17,7 @@ interface GeneralTabProps {
 }
 export function GeneralTab({ autostart, toggleAutostart, timeFormat24h, toggleTimeFormat24h, lowBatteryThreshold, handleThresholdChange, restartBloom, quitBloom, }: GeneralTabProps) {
     return (<>
+      <SearchSettings/>
       <div className="setting-group-label">{tr("System")}</div>
       <div className="setting-group"><LanguageSetting/>
         <SettingRow icon={Power} label={tr("Launch at Login")} desc={tr("Open Dinox automatically")}>

@@ -2,12 +2,13 @@ import {useLiveReducedMotion} from './hooks/useLiveReducedMotion';
 import {contentDefaults,parseDockContent} from './dock/content';
 import './dock/content.css';
 import {tr} from './i18n/core';
+import {tx} from './desktopText';
 import { useShellHeartbeat } from './hooks/useShellHeartbeat';
 import { useBloomAppearance } from './appearance/BloomAppearance';
 import { useState, useEffect, useMemo, useRef, memo } from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import { invoke } from '@tauri-apps/api/core';
-import { Bell, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bell, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { usePersonalSetting } from './components/PersonalFeatures';
 import { parseDockDesign, dockDefaults, dockVariables, bloomDockDesign } from './dockDesign';
 import './components/DockDesign.css';
@@ -73,6 +74,7 @@ const Dock = memo(function Dock() {
     const [systemRaw] = usePersonalSetting('bloom-system-controls', JSON.stringify(systemDefaults));
     const systemOptions = useMemo(() => parseSystemOptions(systemRaw), [systemRaw]);
     const [systemOpen, setSystemOpen] = useState(false);
+    const [searchError,setSearchError]=useState('');
     const systemPanelRef = useRef<HTMLDivElement>(null);
     const [unread, setUnread] = useState(0);
     const [availableWidth, setAvailableWidth] = useState(window.innerWidth);
@@ -562,7 +564,7 @@ const Dock = memo(function Dock() {
     const startItem = useMemo(() => dockItems.find(i => i.path === 'start') as AppInfo, [dockItems]);
     const [dockPage,setDockPage]=useState(0);
     const appsOnly=dockItems.filter(i=>i.path!=='start');
-    const reservedWidth=systemStripWidth(systemOptions)+(systemOptions.enabled?design.gap+10:0)+design.padding*2+30+(design.showBell?design.size+design.gap:0)+(design.showStart?design.size+design.gap:0);
+    const reservedWidth=systemStripWidth(systemOptions)+(systemOptions.enabled?design.gap+10:0)+design.padding*2+30+(design.showBell?design.size+design.gap:0)+(design.showStart?design.size+design.gap:0)+(design.showSearch?design.size+design.gap:0);
     const capacity=Math.max(1,Math.floor(((availableWidth-32)/Math.min(scale,1)-reservedWidth-76)/(design.size+design.gap)));
     const pages=Math.max(1,Math.ceil(appsOnly.length/capacity));
     const currentPage=Math.min(dockPage,pages-1);
@@ -660,7 +662,7 @@ const Dock = memo(function Dock() {
                 clearTimeout(previewTimerRef.current);
         };
     }, [hoveredApp, isDragging, dockItems]);
-    const desiredWidth = (visibleApps.length + 1 + (design.showBell ? 1 : 0) - (design.showStart ? 0 : 1)) * (design.size + design.gap) + design.padding * 2 + 30 + systemStripWidth(systemOptions) + (systemOptions.enabled ? design.gap + 10 : 0);
+    const desiredWidth = (visibleApps.length + 1 + (design.showBell ? 1 : 0) + (design.showSearch ? 1 : 0) - (design.showStart ? 0 : 1)) * (design.size + design.gap) + design.padding * 2 + 30 + systemStripWidth(systemOptions) + (systemOptions.enabled ? design.gap + 10 : 0);
     const displayScale = Math.min(scale, (availableWidth - 32) / Math.max(100, desiredWidth+(pages>1?76:0)));
     const iconVariants = {
         attention: { y: reducedMotion ? 0 : [0, -18, 0, -11, 0], scale: 1, transition: { duration: 1.2, repeat: Math.max(0, Math.ceil(attention.duration / 1200) - 1), ease: "easeInOut" as const } },
@@ -709,6 +711,8 @@ const Dock = memo(function Dock() {
                 </motion.div>)}
               
               {design.separators && design.showStart && pinnedItems.length > 0 && <span className="dock-divider"/>}
+              {searchError&&<span role="alert" className="tooltip">{searchError}</span>}
+              {design.showSearch&&<button className="dock-search-button" title={tx('Поиск Dinox','Dinox search')} aria-label={tx('Поиск Dinox','Dinox search')} onClick={e=>{e.stopPropagation();setSearchError('');void invoke('launcher_show').catch(()=>setSearchError(tx('Не удалось открыть поиск','Could not open search')));}}><Search size={Math.round(design.size*.52)}/></button>}
               {pages>1&&<button className="dock-page-button" aria-label={tr('Предыдущие приложения')} disabled={currentPage===0} onClick={e=>{e.stopPropagation();setDockPage(currentPage-1);}}><ChevronLeft size={17}/></button>}
               <Reorder.Group as="div" axis="x" values={pinnedItems.map(i => i.path)} onReorder={handleReorder} className="dock-reorder-group">
                 {pinnedItems.map((app) => (<Reorder.Item as="div" key={app.path} value={app.path} style={{ position: 'relative' }} onDragStart={() => { setIsDragging(true); setHoveredApp(null); setPressedApp(null); }} onDragEnd={handleDragEnd} onContextMenu={(e) => handleContextMenu(e, app)} onClick={(e) => {

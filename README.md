@@ -15,6 +15,9 @@ Dinox is a community Windows desktop customization app, built with Rust, Tauri a
 | Island | Time, optional date and indicators, media controls, hover visibility and calendar access |
 | Calendar | Month, week and agenda views; read-only ICS subscriptions, including Google and Yandex calendar feeds |
 | Quick controls | Wi-Fi and Bluetooth panels, sound, brightness, battery, keyboard layout and tray access |
+| Search | Floating launcher, custom keyboard shortcut, apps, Windows-indexed files, calculator and web search |
+| Audio mixer | Per-app volume and mute, output-device selection and volume |
+| Layout editor | Island and dock preview, rearrange indicators, save or cancel changes |
 | Notifications | Optional Windows notification integration, messenger-style cards and privacy controls |
 | Preferences | Russian and English UI, coordinated themes and performance settings |
 
@@ -25,6 +28,8 @@ Download the x64 installer from **Releases**, install for your Windows account, 
 Windows 11 x64 is the primary target. WebView2 is required; the installer can obtain it. This is an early community release: compatibility with every display, driver, shell extension or Windows build is not guaranteed.
 
 ## What to expect
+
+Configure the search shortcut in **Settings → General → Dinox search**. If another app owns the shortcut, Dinox reports the conflict; choose another combination or free it in that app and retry. See the [desktop tools guide](docs/DESKTOP-TOOLS.md).
 
 - Calendar feeds are **read-only**, refreshed on the configured interval; they do not edit Google or Yandex events. Treat private ICS links like passwords.
 - Wi-Fi enumeration may require Windows location permission. Bluetooth behavior depends on the adapter and device.

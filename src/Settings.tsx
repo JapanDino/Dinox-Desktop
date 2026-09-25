@@ -1,4 +1,6 @@
 import {tr} from './i18n/core';
+import {tx} from './desktopText';
+import {LayoutEditor} from './settings/LayoutEditor';
 import { useBloomAppearance } from './appearance/BloomAppearance';
 import { NotificationSettings } from './notifications/NotificationSettings';
 import { StrictMode, useState, useEffect } from "react";
@@ -18,6 +20,7 @@ const TABS: {
     label: string;
     icon: typeof Settings;
 }[] = [
+    {id:"workspace",get label(){return tx("Рабочий стол","Workspace");},icon:Monitor},
     { id: "general", get label() {
             return tr("General");
         }, icon: Settings },
@@ -97,6 +100,7 @@ function SettingsApp() {
         </div>
 
         <div className="settings-content">
+          {activeTab === "workspace" && <LayoutEditor/>}
           {activeTab === "notifications" && <NotificationSettings />}
           {activeTab === "general" && (<GeneralTab autostart={settings.autostart} toggleAutostart={settings.toggleAutostart} timeFormat24h={settings.timeFormat24h} toggleTimeFormat24h={settings.toggleTimeFormat24h} showUpdateIndicator={settings.showUpdateIndicator} toggleUpdateIndicator={settings.toggleUpdateIndicator} lowBatteryThreshold={settings.lowBatteryThreshold} handleThresholdChange={settings.handleThresholdChange} restartBloom={settings.restartBloom} quitBloom={settings.quitBloom}/>)}
           {activeTab === "appearance" && (<AppearanceTab themeMode={settings.themeMode} handleThemeModeChange={settings.handleThemeModeChange} themeColor={settings.themeColor} handleThemeColorChange={settings.handleThemeColorChange} themeOpacity={settings.themeOpacity} handleOpacityChange={settings.handleOpacityChange} themeSaturation={settings.themeSaturation} handleSaturationChange={settings.handleSaturationChange} themeBrightness={settings.themeBrightness} handleBrightnessChange={settings.handleBrightnessChange} cornersEnabled={settings.cornersEnabled} toggleCorners={settings.toggleCorners} scale={settings.scale} handleScaleChange={settings.handleScaleChange}/>)}

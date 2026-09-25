@@ -1,5 +1,6 @@
 import {test,expect} from 'bun:test';
-import {parseCalendar,layoutDay,weekStart,onDay,safeLink,type CalendarSource} from '../src/calendar/model';
+import {parseCalendar,layoutDay,layoutWeekBanners,isBannerEvent,addDays,weekStart,onDay,safeLink,type CalendarSource} from '../src/calendar/model';
+import {eventTime} from '../src/calendar/eventLabels';
 const source=(body:string,id='one'):CalendarSource=>({id,name:'Test',enabled:true,color:'#b7a6ff',checked:0,ics:`BEGIN:VCALENDAR\r\nVERSION:2.0\r\n${body}\r\nEND:VCALENDAR`});
 const event=(body:string)=>`BEGIN:VEVENT\r\n${body}\r\nEND:VEVENT`;
 const from=Date.parse('2026-09-01T00:00:00Z'),to=Date.parse('2026-10-01T00:00:00Z');
@@ -41,4 +42,43 @@ test('overlapping events occupy separate lanes',()=>{
 test('cancelled occurrence can omit DTSTART and DTEND',()=>{
  const result=parseCalendar(source([event('UID:cancel\r\nDTSTART:20260907T100000Z\r\nDTEND:20260907T110000Z\r\nRRULE:FREQ=WEEKLY;COUNT=2'),event('UID:cancel\r\nRECURRENCE-ID:20260914T100000Z\r\nSTATUS:CANCELLED')].join('\r\n')),from,to);
  expect(result).toHaveLength(1);
+});
+
+test('multi-week timed event uses one clipped banner and keeps original timestamps',()=>{
+ const [e]=parseCalendar(source(event('UID:long\r\nDTSTART:20260827T120000\r\nDTEND:20270531T235900\r\nSUMMARY:Long project')),from,to);
+ const before={...e};
+ const [bar]=layoutWeekBanners([e],new Date(2026,8,23));
+ expect(bar.first).toBe(0);expect(bar.span).toBe(7);expect(bar.continuesBefore).toBe(true);expect(bar.continuesAfter).toBe(true);
+ expect(e.allDay).toBe(false);expect(layoutDay([e],new Date(2026,8,23))).toEqual([]);expect(e).toEqual(before);
+ expect(eventTime(e)).toContain('2026');expect(eventTime(e)).toContain('2027');
+});
+
+test('all-day spans exclude DTEND and overlapping banners occupy separate rows',()=>{
+ const events=parseCalendar(source([
+  event('UID:week\r\nDTSTART;VALUE=DATE:20260921\r\nDTEND;VALUE=DATE:20260928'),
+  event('UID:trip\r\nDTSTART;VALUE=DATE:20260923\r\nDTEND;VALUE=DATE:20260925'),
+  event('UID:day\r\nDTSTART;VALUE=DATE:20260925'),
+ ].join('\r\n')),from,to);
+ const bars=layoutWeekBanners(events,new Date(2026,8,23));
+ expect(bars.map(b=>[b.first,b.span,b.lane])).toEqual([[0,7,0],[2,2,1],[4,1,1]]);
+ expect(bars[0].continuesAfter).toBe(false);
+ expect(layoutWeekBanners(events,new Date(2026,8,28))).toHaveLength(0);
+ expect(eventTime(events[0])).toContain('27');expect(eventTime(events[0])).not.toContain('28');
+});
+
+test('short overnight events remain in hourly grid and midnight does not add a day',()=>{
+ const [e]=parseCalendar(source(event('UID:overnight\r\nDTSTART:20260923T230000\r\nDTEND:20260924T010000')),from,to);
+ expect(isBannerEvent(e)).toBe(false);expect(layoutWeekBanners([e],new Date(e.start))).toHaveLength(0);
+ expect(layoutDay([e],new Date(2026,8,23))[0]).toMatchObject({top:1380,height:60});
+ expect(layoutDay([e],new Date(2026,8,24))[0]).toMatchObject({top:0,height:60});
+ const full={...e,start:+new Date(2026,8,23),end:+new Date(2026,8,24)};
+ expect(layoutWeekBanners([full],new Date(full.start))[0].span).toBe(1);
+});
+
+test('calendar-day duration uses local dates across DST transitions',()=>{
+ const [base]=parseCalendar(source(event('UID:base\r\nDTSTART;VALUE=DATE:20260923')),from,to);
+ const start=new Date(2026,2,29),end=addDays(start,1);
+ const e={...base,start:+start,end:+end,allDay:false};
+ expect(isBannerEvent(e)).toBe(true);
+ expect(layoutWeekBanners([e],start)[0].span).toBe(1);
 });

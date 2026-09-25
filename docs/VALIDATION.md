@@ -46,3 +46,13 @@ Production code for this validation is tagged [v4.0.2](https://github.com/JapanD
 ## Limits
 
 Browser fixtures do not prove hardware Wi-Fi/Bluetooth operations. Existing notification access does not prove Telegram uses Windows notifications. A passing update test is not a complete security audit, and representative battery-life measurements remain outstanding.
+
+## 4.1.0 release preparation — 2026-09-25
+
+- `bun test`: 52 passed, 0 failed; 1,106 assertions across 11 files.
+- `bun run build`: TypeScript and production Vite build passed, including the launcher entrypoint.
+- `cargo test --manifest-path src-tauri/Cargo.toml --locked --bin bloom`: 26 passed, 0 failed, 1 intentionally ignored public-network calendar test.
+- Calendar regression coverage includes all-day exclusive end dates, spanning/overlapping week bands, short overnight meetings, DST-length days and upcoming-event selection. Previous browser fixture checks covered month-wheel navigation, week band overflow, date labels and narrow-screen alignment.
+- All six application/package version files were bumped together to 4.1.0. Release artifacts are built and signed by the tagged GitHub workflow, not copied from the development installation.
+
+These checks do not certify every hardware configuration or a completed 4.1.0 installation. The earlier completed updater installation above applies specifically to 4.0.2. Notification permissions and calendar links are not bundled with a release.

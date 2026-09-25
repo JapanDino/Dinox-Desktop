@@ -12,6 +12,7 @@ import { BluetoothPanel } from './BluetoothPanel';
 import { WifiPanel } from './WifiPanel';
 import { LanguagePanel } from './LanguagePanel';
 import { TrayPanel } from './TrayPanel';
+import { MixerPanel } from './MixerPanel';
 interface Props {
     options: SystemOptions;
     design: DockDesign;
@@ -22,7 +23,7 @@ interface Props {
 }
 export function SystemControls({ options: o, design, open, onOpen, panelRef, eco }: Props) {
     const anchor = useRef<HTMLButtonElement>(null);
-    const [page,setPage]=useState<'quick'|'wifi'|'bluetooth'|'language'|'tray'>('quick');
+    const [page,setPage]=useState<'quick'|'wifi'|'bluetooth'|'language'|'tray'|'mixer'>('quick');
     const [actionPending,setActionPending]=useState<string|null>(null);
     const actionBusy=useRef(false);
     const bluetoothOpen=page==='bluetooth',wifiOpen=page==='wifi';
@@ -136,15 +137,15 @@ export function SystemControls({ options: o, design, open, onOpen, panelRef, eco
       </button>
       {o.tray && <button className="system-tray" aria-label={tr("Скрытые значки приложений")} title={tr("Скрытые значки приложений Windows")} aria-expanded={open&&page==='tray'} onClick={openTray}><ChevronUp size={17}/></button>}
     </div>
-    {open && createPortal(<div id="bloom-system-panel" ref={panelRef} role="dialog" aria-label={page==='tray'?tr('Скрытые значки'):page==='language'?tr('Раскладка клавиатуры'):wifiOpen?'Wi-Fi':bluetoothOpen?"Bluetooth":tr("Быстрые настройки")} className="system-panel" style={portalStyle} onClick={e => e.stopPropagation()} onContextMenu={e => { e.preventDefault(); e.stopPropagation(); }}>
+    {open && createPortal(<div id="bloom-system-panel" ref={panelRef} role="dialog" aria-label={page==='mixer'?tr('Микшер приложений'):page==='tray'?tr('Скрытые значки'):page==='language'?tr('Раскладка клавиатуры'):wifiOpen?'Wi-Fi':bluetoothOpen?"Bluetooth":tr("Быстрые настройки")} className="system-panel" style={portalStyle} onClick={e => e.stopPropagation()} onContextMenu={e => { e.preventDefault(); e.stopPropagation(); }}>
       {error && <p className="system-error" role="alert">{trError(error)}</p>}
-      {page==='tray'?<TrayPanel onBack={()=>setPage('quick')} onClose={()=>onOpen(false)} busy={actionPending==='tray'} onWindows={()=>void action('tray')}/>:page==='language'?<LanguagePanel onBack={()=>setPage('quick')} onClose={()=>onOpen(false)} onChanged={()=>void refresh()}/>:wifiOpen?<WifiPanel onBack={()=>setWifiOpen(false)} onClose={()=>onOpen(false)} onWindows={action}/>:bluetoothOpen?<BluetoothPanel onBack={()=>setBluetoothOpen(false)} onClose={()=>onOpen(false)} onWindows={action}/>:<>
+      {page==='mixer'?<MixerPanel onBack={()=>setPage('quick')} onClose={()=>onOpen(false)}/>:page==='tray'?<TrayPanel onBack={()=>setPage('quick')} onClose={()=>onOpen(false)} busy={actionPending==='tray'} onWindows={()=>void action('tray')}/>:page==='language'?<LanguagePanel onBack={()=>setPage('quick')} onClose={()=>onOpen(false)} onChanged={()=>void refresh()}/>:wifiOpen?<WifiPanel onBack={()=>setWifiOpen(false)} onClose={()=>onOpen(false)} onWindows={action}/>:bluetoothOpen?<BluetoothPanel onBack={()=>setBluetoothOpen(false)} onClose={()=>onOpen(false)} onWindows={action}/>:<>
       <header><div><strong>{tr("Быстрые настройки")}</strong><span>{tr("Система под рукой")}</span></div><button aria-label={tr("Закрыть быстрые настройки")} onClick={() => onOpen(false)}><X size={17}/></button></header>
       <div className="system-connections"><button onClick={() => {setError('');setWifiOpen(true);}}><Wifi /><span>Wi-Fi<small>{tr("Выбор сети")}</small></span><ChevronRight size={14}/></button><button onClick={() => {setError('');setBluetoothOpen(true);}}><Bluetooth /><span>Bluetooth<small>{tr("Устройства")}</small></span><ChevronRight size={14}/></button></div>
       <div className="system-slider"><div><button aria-label={status?.muted ? tr("Включить звук") : tr("Выключить звук")} disabled={status?.volume == null} onClick={() => void action('mute')}><VolumeIcon size={19}/></button><label htmlFor="system-volume">{tr("Громкость")}</label><output>{status?.volume == null ? '—' : `${volume}%`}</output></div><input id="system-volume" aria-label={tr("Громкость системы")} type="range" min="0" max="100" disabled={status?.volume == null} value={volume} onChange={e => { changing.current.volume = true; setVolume(Number(e.target.value)); }} onPointerUp={e => void commit('volume', Number(e.currentTarget.value))} onKeyUp={e => { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key))
             void commit('volume', Number(e.currentTarget.value)); }} onBlur={e => { if (changing.current.volume)
             void commit('volume', Number(e.currentTarget.value)); }}/>
-        <div className="system-links"><button onClick={() => void action('mixer')}><SlidersHorizontal size={13}/>{tr("Микшер приложений")}</button><button onClick={() => void action('sound')}>{tr("Выход и микрофон")}<ArrowUpRight size={12}/></button></div>
+        <div className="system-links"><button onClick={() => setPage('mixer')}><SlidersHorizontal size={13}/>{tr("Микшер приложений")}</button><button onClick={() => void action('sound')}>{tr("Выход и микрофон")}<ArrowUpRight size={12}/></button></div>
       </div>
       <div className="system-slider"><div><Sun size={19}/><label htmlFor="system-brightness">{tr("Яркость")}</label><output>{status?.brightness == null ? '—' : `${brightness}%`}</output></div><input id="system-brightness" aria-label={tr("Яркость экрана")} type="range" min="0" max="100" disabled={status?.brightness == null} value={brightness} onChange={e => { changing.current.brightness = true; setBrightness(Number(e.target.value)); }} onPointerUp={e => void commit('brightness', Number(e.currentTarget.value))} onKeyUp={e => { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key))
             void commit('brightness', Number(e.currentTarget.value)); }} onBlur={e => { if (changing.current.brightness)

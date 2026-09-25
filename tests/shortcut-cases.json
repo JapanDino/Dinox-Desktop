@@ -1,0 +1,23 @@
+[
+  {"value":"off","valid":true},
+  {"value":"alt-space","valid":true,"mods":1,"key":32},
+  {"value":"ctrl-alt-space","valid":true,"mods":3,"key":32},
+  {"value":"custom:6:75","valid":true,"mods":6,"key":75},
+  {"value":"custom:5:32","valid":true,"mods":5,"key":32},
+  {"value":"custom:3:49","valid":true,"mods":3,"key":49},
+  {"value":"custom:2:135","valid":true,"mods":2,"key":135},
+  {"value":"custom:0:75","valid":false},
+  {"value":"custom:4:75","valid":false},
+  {"value":"custom:8:75","valid":false},
+  {"value":"custom:2:123","valid":false},
+  {"value":"custom:3:66","valid":false},
+  {"value":"custom:7:66","valid":false},
+  {"value":"custom:1:115","valid":false},
+  {"value":"custom:1:9","valid":false},
+  {"value":"custom:3:46","valid":false},
+  {"value":"custom:2:27","valid":false},
+  {"value":"custom:2:999","valid":false},
+  {"value":"custom:NaN:75","valid":false},
+  {"value":"custom:2:75:0","valid":false},
+  {"value":"invalid","valid":false}
+]

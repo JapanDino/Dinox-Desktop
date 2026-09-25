@@ -20,6 +20,9 @@ mod shell_policy;
 mod localization;
 mod input_policy;
 mod system_launch;
+mod audio_mixer;
+mod launcher;
+mod layout_editor;
 
 use tauri::Manager;
 use windows::Win32::System::Console::SetConsoleCtrlHandler;
@@ -144,6 +147,10 @@ fn main() {
             Some(vec![]),
         ))
         .invoke_handler(tauri::generate_handler![
+            audio_mixer::mixer_snapshot, audio_mixer::mixer_set, audio_mixer::mixer_default_device,
+            launcher::launcher_files, launcher::launcher_open, launcher::launcher_show, launcher::launcher_hotkey_status,
+            launcher::launcher_record_shortcut, launcher::launcher_retry_shortcut,
+            layout_editor::save_layout,
             shell_controller::shell_heartbeat,
             shell_controller::shell_status,
             calendar::calendar_list, calendar::calendar_save, calendar::calendar_refresh, calendar::calendar_remove, calendar::calendar_open_link,

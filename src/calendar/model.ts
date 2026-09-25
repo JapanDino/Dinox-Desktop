@@ -163,7 +163,7 @@ export function parseCalendar(source: CalendarSource, from: number, to: number):
 }
 export function layoutDay(events: CalendarEvent[], date: Date) {
     const start = +dayStart(date), end = +addDays(dayStart(date), 1);
-    const sorted = events.filter(e => !e.allDay && onDay(e, date)).sort((a, b) => a.start - b.start || b.end - a.end);
+    const sorted = events.filter(e => !isBannerEvent(e) && onDay(e, date)).sort((a, b) => a.start - b.start || b.end - a.end);
     const output: {
         event: CalendarEvent;
         column: number;
@@ -190,6 +190,27 @@ export function layoutDay(events: CalendarEvent[], date: Date) {
     }
     finish();
     return output;
+}
+
+// Keep short overnight appointments in the hourly grid. Long DATE-TIME events
+// use the same banner area as DATE events, without changing their allDay flag.
+export const isBannerEvent = (event: CalendarEvent) => event.allDay || event.end >= +addDays(new Date(event.start), 1);
+
+export function layoutWeekBanners(events: CalendarEvent[], date: Date) {
+    const start = weekStart(date), end = addDays(start, 7);
+    const days = Array.from({length: 7}, (_, i) => addDays(start, i));
+    const lanes: number[] = [];
+    return events.filter(event => isBannerEvent(event) && event.start < +end && event.end > +start)
+        .sort((a,b) => a.start - b.start || b.end - a.end || a.id.localeCompare(b.id))
+        .map(event => {
+            const first = days.findIndex(day => onDay(event, day));
+            const last = days.reduce((result, day, i) => onDay(event, day) ? i : result, first);
+            let lane = lanes.findIndex(until => until <= first);
+            if (lane < 0) lane = lanes.length;
+            lanes[lane] = last + 1;
+            return {event, first, span: last - first + 1, lane,
+                continuesBefore: event.start < +start, continuesAfter: event.end > +end};
+        });
 }
 
 // Localize missing titles at render time; supplied event text is user content.

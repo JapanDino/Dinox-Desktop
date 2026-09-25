@@ -1,3 +1,5 @@
+import {desktopMock} from './desktopMocks';
+import {DesktopDemo} from './DesktopDemo';
 import {WorkspaceDemo} from './WorkspaceDemo';
 import packageInfo from '../package.json';
 // Dev-only fixture harness; not included in production entrypoints.
@@ -22,6 +24,13 @@ function previewRoot(){return (window as any).__BLOOM_PREVIEW_ROOT__??=((window 
 let nextId=1;
 const callbacks=new Map<number,Function>(),listeners=new Map<number,{event:string;handler:number}>();
 const settings:Record<string,string>={'bloom-calendar-view':'week','bloom-language':localStorage.getItem('bloom-language')||'ru',...(JSON.parse(localStorage.getItem('dinox-v4-demo-settings')||'{}'))};
+// Promotional captures use only deterministic, synthetic settings and fixtures.
+if(new URLSearchParams(location.search).has('promo')){
+ Object.keys(settings).forEach(key=>delete settings[key]);
+ Object.assign(settings,{'bloom-calendar-view':'week','bloom-language':'ru','bloom-unified-appearance':'true','bloom-dock-content':JSON.stringify({mode:'personal',showRunning:true})});
+ settings['bloom-calendar-view']=new URLSearchParams(location.search).get('promo')==='cover'?'month':'week';
+ settings['bloom-calendar-density']='compact';
+}
 if(new URLSearchParams(location.search).has('workspace')){
  settings['bloom-notifications']??=JSON.stringify({enabled:true,windowsEnabled:true});
  settings['bloom-dock-content']??=JSON.stringify({mode:'personal',showRunning:true});
@@ -37,19 +46,35 @@ const demoApps=[
 ].map((a,i)=>({...a,is_running:i<3,hwnd:i<3?5001+i:null,executable:a.path}));
 let demoNotices:any[]=[];
 const demoSend=()=>{demoNotices=[{id:++nextId,app_id:'TelegramDesktop',app_name:'Telegram',title:'Команда проекта',body:'Макет готов. Посмотри обновлённый календарь — обсудим вечером.',created:Date.now()},...demoNotices].slice(0,50);emit('bloom-notifications-changed',null);};
-const demoPins=(personal:boolean)=>{const stored=localStorage.getItem('dinox-v4-demo-pins-'+personal);return stored?JSON.parse(stored):demoApps.slice(0,personal?4:2);};
+const demoPins=(personal:boolean)=>{const stored=new URLSearchParams(location.search).has('promo')?null:localStorage.getItem('dinox-v4-demo-pins-'+personal);return stored?JSON.parse(stored):demoApps.slice(0,personal?4:2);};
 const settingsChannel=new BroadcastChannel('dinox-v4-preview-settings');
 settingsChannel.onmessage=({data})=>{settings[data.key]=data.value;emit('settings-changed',data);};
 if(new URLSearchParams(location.search).has('legacy'))settings['bloom-dock-design']=JSON.stringify({background:'#403060',accent:'#eab0fa',opacity:65});
 const now=dayStart(new Date()),week=weekStart(now);
 const stamp=(day:number,hour:number)=>{const d=addDays(week,day);d.setHours(hour,0,0,0);return d.toISOString().replace(/[-:]/g,'').replace('.000','');};
-const event=(uid:string,day:number,start:number,end:number,title:string,extra='')=>`BEGIN:VEVENT\r\nUID:${uid}\r\nDTSTART:${stamp(day,start)}\r\nDTEND:${stamp(day,end)}\r\nSUMMARY:${title}\r\n${extra}\r\nEND:VEVENT`;
+const event=(uid:string,day:number,start:number,end:number,title:string,extra='')=>{
+ if(new URLSearchParams(location.search).get('promo')==='calendar'){
+  if(uid==='w3')title='Созвон';
+  if(uid==='p2')title='Заказ';
+  if(uid==='w4'){start=13;end=14;title='Дизайн-ревью';}
+  if(uid==='s1'||uid==='s2')end=14;
+ }
+ return `BEGIN:VEVENT\r\nUID:${uid}\r\nDTSTART:${stamp(day,start)}\r\nDTEND:${stamp(day,end)}\r\nSUMMARY:${title}\r\n${extra}\r\nEND:VEVENT`;
+};
 const wrap=(body:string)=>`BEGIN:VCALENDAR\r\nVERSION:2.0\r\n${body}\r\nEND:VCALENDAR`;
 const fixtures:CalendarSource[]=[
  {id:'work',name:'Работа',color:'#b7a6ff',enabled:true,checked:Date.now()/1000,ics:wrap([event('w1',0,10,11,'Планирование недели'),event('w2',1,11,12,'Разбор проекта'),event('w3',2,10,11,'Команда · еженедельная встреча','LOCATION:Google Meet\r\nDESCRIPTION:Обсудить задачи и план релиза. https://meet.google.com/abc-defg-hij\r\nURL:https://calendar.google.com/'),event('w4',3,14,16,'Работа над проектом'),event('w5',4,12,13,'Итоги недели')].join('\r\n'))},
  {id:'study',name:'Учёба',color:'#92bdff',enabled:true,checked:Date.now()/1000,ics:wrap([event('s1',0,13,15,'Машинное обучение'),event('s2',2,12,14,'Подготовка к семинару'),event('s3',3,10,12,'Практика'),event('s4',4,15,16,'Консультация')].join('\r\n'))},
  {id:'personal',name:'Личное',color:'#8dd6b0',enabled:true,checked:Date.now()/1000,ics:wrap([event('p1',1,16,17,'Тренировка'),event('p2',2,10,12,'Забрать заказ'),event('p3',4,18,20,'Встреча с друзьями'),event('p4',5,11,13,'Прогулка')].join('\r\n'))},
 ];
+if(new URLSearchParams(location.search).has('spanning-events')){
+ const ds=(day:number)=>{const d=addDays(week,day);return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;};
+ fixtures.push({id:'spanning',name:'Длинные события',color:'#e8bb88',enabled:true,checked:Date.now()/1000,ics:wrap([
+ `BEGIN:VEVENT\r\nUID:long-project\r\nDTSTART:${ds(-25)}T120000\r\nDTEND:${ds(220)}T235900\r\nSUMMARY:Длинный проект 2026/2027\r\nEND:VEVENT`,
+ `BEGIN:VEVENT\r\nUID:whole-week\r\nDTSTART;VALUE=DATE:${ds(0)}\r\nDTEND;VALUE=DATE:${ds(7)}\r\nSUMMARY:Учебная неделя\r\nEND:VEVENT`,
+ ...[0,1,2,3].map(i=>`BEGIN:VEVENT\r\nUID:all-day-${i}\r\nDTSTART;VALUE=DATE:${ds(2)}\r\nDTEND;VALUE=DATE:${ds(4)}\r\nSUMMARY:Событие на весь день ${i+1}\r\nEND:VEVENT`)
+ ].join('\r\n'))});
+}
 let sources=fixtures.map(s=>({...s})),offline=false;
 let systemStatus={volume:42 as number|null,muted:false,brightness:65 as number|null,battery:76 as number|null,charging:false,plugged_in:false,language:'RU'};
 let bluetoothEnabled=true;
@@ -57,13 +82,14 @@ let wifiConnected='demo-home';
 let wifiEnabled=true;
 function emit(event:string,payload:unknown){for(const x of listeners.values())if(x.event===event)callbacks.get(x.handler)?.({event,payload});}
 (window as any).__TAURI_INTERNALS__={transformCallback:(fn:Function)=>{const id=nextId++;callbacks.set(id,fn);return id;},invoke:async(command:string,args:any)=>{
+ const desktopResult=await desktopMock(command,args,settings,emit);if(desktopResult)return desktopResult.value;
  if(command==='keyboard_layout_snapshot')return {target:new URLSearchParams(location.search).has('layout-no-target')?null:'demo-target',target_name:'Untitled — Notepad',layouts:[{id:'ru',label:'RU',name:'Русский',active:systemStatus.language==='RU'},{id:'en',label:'EN',name:'English (US)',active:systemStatus.language==='EN'}]};
  if(command==='keyboard_layout_select'){if(new URLSearchParams(location.search).has('layout-error'))throw 'Приложение не подтвердило смену раскладки. Перейдите в него и попробуйте снова.';systemStatus.language=args.id==='ru'?'RU':'EN';return;}
  if(command==='wifi_snapshot'){
    const q=new URLSearchParams(location.search);
    if(q.has('wifi-error'))throw 'Список сетей Wi-Fi недоступен';
    const blocked=q.has('wifi-denied'),available=!q.has('wifi-missing');
-   return {available,enabled:available&&wifiEnabled,controllable:available,warning:blocked?'Windows ограничила доступ к сетям Wi-Fi. Проверьте разрешение на местоположение в параметрах Windows.':null,networks:!available||!wifiEnabled||blocked||q.has('wifi-empty')?[]:[{id:'demo-home',adapter:'Demo adapter',name:'Home network',signal:94,secure:true,saved:true,personal:true,connected:wifiEnabled&&wifiConnected==='demo-home',connectable:true},{id:'demo-office',adapter:'Demo adapter',name:'Studio network with a long display name',signal:70,secure:true,saved:true,personal:true,connected:wifiEnabled&&wifiConnected==='demo-office',connectable:true},{id:'demo-guest',adapter:'Demo adapter',name:'Guest Wi-Fi',signal:35,secure:true,saved:false,personal:true,connected:wifiEnabled&&wifiConnected==='demo-guest',connectable:true}]};
+   return {available,enabled:available&&wifiEnabled,controllable:available,warning:blocked?'Windows ограничила доступ к сетям Wi-Fi. Проверьте разрешение на местоположение в параметрах Windows.':null,networks:!available||!wifiEnabled||blocked||q.has('wifi-empty')?[]:[{id:'demo-home',adapter:'Demo adapter',name:'Home network',signal:94,secure:true,saved:true,personal:true,connected:wifiEnabled&&wifiConnected==='demo-home',connectable:true},{id:'demo-office',adapter:'Demo adapter',name:q.has('promo')?'Studio Wi-Fi':'Studio network with a long display name',signal:70,secure:true,saved:true,personal:true,connected:wifiEnabled&&wifiConnected==='demo-office',connectable:true},{id:'demo-guest',adapter:'Demo adapter',name:'Guest Wi-Fi',signal:35,secure:true,saved:false,personal:true,connected:wifiEnabled&&wifiConnected==='demo-guest',connectable:true}]};
  }
  if(command==='wifi_set_enabled'){wifiEnabled=args.enabled;return;}
  if(command==='wifi_disconnect'){wifiConnected='';return;}
@@ -137,7 +163,7 @@ function emit(event:string,payload:unknown){for(const x of listeners.values())if
  if(command==='get_volume')return .5;
  if(command==='get_brightness')return 50;
  if(command.startsWith('get_'))return 0;
- if(command==='save_setting'){if(new URLSearchParams(location.search).has('save-error'))throw 'Не удалось сохранить настройку.';document.documentElement.dataset.savedSetting=JSON.stringify(args);settings[args.key]=args.value;localStorage.setItem('dinox-v4-demo-settings',JSON.stringify(settings));emit('settings-changed',args);settingsChannel.postMessage(args);return;}
+ if(command==='save_setting'){if(new URLSearchParams(location.search).has('save-error'))throw 'Не удалось сохранить настройку.';document.documentElement.dataset.savedSetting=JSON.stringify(args);settings[args.key]=args.value;localStorage.setItem('dinox-v4-demo-settings',JSON.stringify(settings));emit('settings-changed',args);if(args.key==='dinox-search-shortcut')emit('launcher-shortcut-status',args.value!=='off'&&!new URLSearchParams(location.search).has('shortcut-conflict'));settingsChannel.postMessage(args);return;}
  if(command==='calendar_list')return sources;
  if(command==='calendar_refresh'){if(offline)throw 'Нет подключения к интернету. Сохранённые события доступны.';return {...sources.find(s=>s.id===args.id)!,checked:Date.now()/1000};}
  if(command==='calendar_remove'){sources=sources.filter(s=>s.id!==args.id);emit('calendars-changed',null);return;}
@@ -167,7 +193,12 @@ function DesignPreview(){
  {notices.visible&&<aside style={{position:'fixed',right:16,top:16,width:400,height:460,background:'#000000',borderRadius:22,zIndex:900,display:'flex',flexDirection:'column'}}><NotificationPanel model={notices}/></aside>}<div className="fixture-dock"><Dock/></div><style>{`.fixture-dock{position:fixed;inset:0;pointer-events:none}.fixture-dock .dock-container{pointer-events:none}.fixture-dock .dock{pointer-events:auto}`}</style></div>
 }
 if(new URLSearchParams(location.search).has('no-hardware'))systemStatus={...systemStatus,volume:null,brightness:null,battery:null,plugged_in:true};
-if(new URLSearchParams(location.search).has('workspace')){
+if(new URLSearchParams(location.search).has('desktop')){
+ (window as any).__TAURI_INTERNALS__.metadata={currentWindow:{label:'main'},currentWebview:{label:'main'}};previewRoot().render(<DesktopDemo/>);
+} else if(new URLSearchParams(location.search).has('promo')){
+ (window as any).__TAURI_INTERNALS__.metadata={currentWindow:{label:'main'},currentWebview:{label:'main'}};
+ import('./Promo').then(({Promo})=>previewRoot().render(<Promo/>));
+} else if(new URLSearchParams(location.search).has('workspace')){
  (window as any).__TAURI_INTERNALS__.metadata={currentWindow:{label:'main'},currentWebview:{label:'main'}};previewRoot().render(<WorkspaceDemo send={demoSend}/>);
 } else if(new URLSearchParams(location.search).has('design')) {
  (window as any).__TAURI_INTERNALS__.metadata={currentWindow:{label:'main'},currentWebview:{label:'main'}};
