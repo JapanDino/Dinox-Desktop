@@ -56,3 +56,11 @@ Browser fixtures do not prove hardware Wi-Fi/Bluetooth operations. Existing noti
 - All six application/package version files were bumped together to 4.1.0. Release artifacts are built and signed by the tagged GitHub workflow, not copied from the development installation.
 
 These checks do not certify every hardware configuration or a completed 4.1.0 installation. The earlier completed updater installation above applies specifically to 4.0.2. Notification permissions and calendar links are not bundled with a release.
+
+### Published 4.1.0 artifacts
+
+The [4.1.0 release](https://github.com/JapanDino/Dinox-Desktop/releases/tag/v4.1.0) was published on 2026-09-25 from commit `488ca0b297b4dd3498767d730d6cd24994142fb1`. The public latest-release endpoint returned 4.1.0. All three published SHA-256 entries matched the downloaded installer, signature and manifest, and the manifest signature matched the separate signature asset.
+
+Independent PyNaCl verification against the updater public key embedded in the tagged source accepted the installer and Minisign trusted comment. Flipping one byte in memory caused signature rejection. The installer is 6,035,283 bytes; SHA-256: `a9433288e7c6dc439a383f5d1199780b5122c5130beea7c791603d0b4717eb5e`.
+
+This was download/integrity verification, not an installation test. The installed-client diagnostic launch was blocked by execution policy and was not used as evidence. The installed application was not changed during publication. [Source CI](https://github.com/JapanDino/Dinox-Desktop/actions/runs/36120248766) and [release workflow](https://github.com/JapanDino/Dinox-Desktop/actions/runs/36120248790).
