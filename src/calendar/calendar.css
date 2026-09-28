@@ -38,6 +38,7 @@
 .cal-week-frame:focus-visible{outline:1px solid var(--cal-text);outline-offset:-2px}
 .cal-week-frame>.cal-week-head,.cal-week-frame>.cal-all-day,.cal-week-frame>.cal-week-scroll{min-width:620px;box-sizing:border-box}
 .cal-week-frame .cal-week-scroll{overflow-x:hidden}
+.cal-now-track{position:absolute;left:0;right:0;height:0;border-top:1px solid #f58f9955;z-index:4;pointer-events:none}.cal-now-track>span{position:absolute;left:0;top:-9px;background:#f58f99;color:#19060a;font:600 9px/17px Inter,"Segoe UI",sans-serif;padding:0 3px;border-radius:3px;font-variant-numeric:tabular-nums}.cal-now{height:2px;z-index:5}.cal-now:before{width:6px;height:6px}
 .cal-week-hint{display:none;color:var(--cal-muted);font-size:10px;line-height:1.5;padding:8px 14px 0;margin:0}
 @container(max-width:620px){.cal-week-hint{display:block}.cal-week-frame .cal-time-event strong{font-size:10px}.cal-week-frame .cal-time-event span{display:block}.cal-week-frame .cal-time-event{padding:4px}.cal-period strong{overflow-wrap:normal}.cal-toolbar{flex-wrap:wrap}}
 .performance-options .toggle-switch input:checked + .slider{background:#ededed;border-color:#ededed}.performance-options .toggle-switch input:checked + .slider:before{background:#111}

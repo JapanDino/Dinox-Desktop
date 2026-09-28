@@ -95,3 +95,7 @@
 - [Core Audio: GetSessionEnumerator](https://learn.microsoft.com/en-us/windows/win32/api/audiopolicy/nf-audiopolicy-iaudiosessionmanager2-getsessionenumerator)
 - [Определение ABI IPolicyConfig](https://github.com/frgnca/AudioDeviceCmdlets/blob/master/SOURCE/IPolicyConfig.cs)
 - [Seelen UI](https://github.com/eythaann/Seelen-UI), [EarTrumpet](https://github.com/File-New-Project/EarTrumpet), [Flow Launcher](https://github.com/Flow-Launcher/Flow.Launcher) — референсы взаимодействия. Их код и брендирование не переносились.
+
+## Панель виджетов поверх окон
+
+После 4.1.0 в рабочей копии добавлена опциональная панель «Сегодня / Календарь / Фокус». Настройка: **Рабочий стол → Виджеты поверх окон**. Стандартный хоткей — **Ctrl + Alt + W**, доступна запись своего. См. [поведение, ограничения и проверки](WIDGETS.md).

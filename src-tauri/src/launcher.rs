@@ -19,6 +19,7 @@ pub fn parse_shortcut(choice:&str)->Result<Option<(u32,u32)>,String>{
  if mods==0||mods>7||mods&3==0||!key_ok||reserved{return Err("Unsupported or reserved search shortcut".into());}
  Ok(Some((mods,key)))
 }
+pub fn recording_shortcut()->bool{RECORDING.load(Ordering::SeqCst)}
 pub unsafe fn register_hotkey(hwnd:windows::Win32::Foundation::HWND,app:&tauri::AppHandle){
  use windows::Win32::UI::Input::KeyboardAndMouse::*;
  let _=UnregisterHotKey(Some(hwnd),0xB101);

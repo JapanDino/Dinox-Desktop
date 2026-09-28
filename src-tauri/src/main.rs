@@ -8,6 +8,7 @@ mod commands;
 mod updater;
 mod diagnostics;
 mod calendar;
+mod calendar_sync;
 mod notifications;
 mod dock_content;
 mod system_controls;
@@ -23,6 +24,8 @@ mod system_launch;
 mod audio_mixer;
 mod launcher;
 mod layout_editor;
+mod widgets;
+mod telegram_proxy;
 
 use tauri::Manager;
 use windows::Win32::System::Console::SetConsoleCtrlHandler;
@@ -147,13 +150,22 @@ fn main() {
             Some(vec![]),
         ))
         .invoke_handler(tauri::generate_handler![
+            telegram_proxy::telegram_proxy_status, telegram_proxy::telegram_proxy_set, telegram_proxy::telegram_proxy_connect,
             audio_mixer::mixer_snapshot, audio_mixer::mixer_set, audio_mixer::mixer_default_device,
             launcher::launcher_files, launcher::launcher_open, launcher::launcher_show, launcher::launcher_hotkey_status,
             launcher::launcher_record_shortcut, launcher::launcher_retry_shortcut,
+            widgets::widgets_show, widgets::widgets_hide, widgets::widgets_hotkey_status, widgets::widgets_retry_shortcut,
+            widgets::widgets_media_snapshot, widgets::widgets_media_control, widgets::widgets_open_target,
+            widgets::notes_open_window, widgets::notes_set_top, widgets::notes_close_window, widgets::notes_export_backup,
             layout_editor::save_layout,
             shell_controller::shell_heartbeat,
             shell_controller::shell_status,
             calendar::calendar_list, calendar::calendar_save, calendar::calendar_refresh, calendar::calendar_remove, calendar::calendar_open_link,
+            calendar_sync::calendar_accounts, calendar_sync::calendar_google_config, calendar_sync::calendar_connect_google, calendar_sync::calendar_connect_yandex,
+            calendar_sync::calendar_account_refresh, calendar_sync::calendar_account_remove, calendar_sync::calendar_create_item,
+            calendar_sync::calendar_task_complete,
+            calendar_sync::calendar_collection_enabled,
+            calendar_sync::calendar_cancel_auth,
             personal_power_state, open_calendar_settings, open_notification_settings, open_dock_settings,
             bluetooth::bluetooth_snapshot, bluetooth::bluetooth_set_enabled,
             wifi::wifi_snapshot, wifi::wifi_connect, wifi::wifi_disconnect, wifi::wifi_set_enabled,
@@ -233,6 +245,7 @@ fn main() {
         ])
         .setup(|app| {
             diagnostics::init(app.handle());
+            telegram_proxy::init(app.handle());
             shell_controller::init(app.handle());
 
             // Update check on startup (non-blocking). Always runs so the UI can
@@ -460,6 +473,7 @@ fn main() {
             shell_controller::shutdown();
             set_taskbar_visibility(true, true);
             NATIVE_TASKBAR_HIDDEN.store(false, Ordering::Relaxed);
+            telegram_proxy::shutdown();
 
         }
     });

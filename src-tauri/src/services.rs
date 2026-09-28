@@ -772,6 +772,7 @@ pub fn setup_system_worker(app_handle: AppHandle) -> Sender<SystemCommand> {
                         // For position: emit if >1s difference (avoid spamming on every poll)
                         (*pos - current.position_ms).abs() > 1000
                     }) {
+                        crate::widgets::update_media(&current);
                         let _ = handle_system.emit("media-update", current.clone());
                         ANY_MEDIA_PLAYING.store(current.is_playing, Ordering::Relaxed);
                         last_emitted_info = Some((current.title, current.artist, current.is_playing, current.has_media, art_str, current.position_ms, current.duration_ms));
@@ -2181,7 +2182,7 @@ pub fn setup_display_change_monitor(app_handle: AppHandle) {
                 crate::diagnostics::record("Emergency hotkey Ctrl+Alt+B unavailable");
             }
             crate::launcher::HOTKEY_WINDOW.store(hwnd.0 as isize,Ordering::Relaxed);
-            if let Some(app)=DISPLAY_MONITOR_HANDLE.get(){crate::launcher::register_hotkey(hwnd,app);}
+            if let Some(app)=DISPLAY_MONITOR_HANDLE.get(){let _=windows::Win32::UI::Input::KeyboardAndMouse::UnregisterHotKey(Some(hwnd),0xB102);crate::launcher::register_hotkey(hwnd,app);crate::widgets::register_hotkey(hwnd,app);}
             SHELL_HOOK_MESSAGE.store(RegisterWindowMessageA(windows::core::PCSTR(c"SHELLHOOK".as_ptr() as *const u8)), Ordering::Relaxed);
             if !RegisterShellHookWindow(hwnd).as_bool() {
                 crate::diagnostics::record("shell attention hook unavailable");
@@ -2205,7 +2206,7 @@ unsafe extern "system" fn display_monitor_proc(
     use windows::Win32::Foundation::LRESULT;
 
     if msg==crate::launcher::REFRESH_HOTKEY{
-        if let Some(app)=DISPLAY_MONITOR_HANDLE.get(){crate::launcher::register_hotkey(hwnd,app);}
+        if let Some(app)=DISPLAY_MONITOR_HANDLE.get(){let _=windows::Win32::UI::Input::KeyboardAndMouse::UnregisterHotKey(Some(hwnd),0xB102);crate::launcher::register_hotkey(hwnd,app);crate::widgets::register_hotkey(hwnd,app);}
         return LRESULT(1);
     }
 
@@ -2226,6 +2227,10 @@ unsafe extern "system" fn display_monitor_proc(
     }
     if msg == WM_HOTKEY && wparam.0 == 0xB101 {
         if let Some(app)=DISPLAY_MONITOR_HANDLE.get(){crate::launcher::toggle(app);}
+        return LRESULT(0);
+    }
+    if msg == WM_HOTKEY && wparam.0 == 0xB102 {
+        if let Some(app)=DISPLAY_MONITOR_HANDLE.get(){crate::widgets::toggle(app);}
         return LRESULT(0);
     }
     let shell_message = SHELL_HOOK_MESSAGE.load(Ordering::Relaxed);

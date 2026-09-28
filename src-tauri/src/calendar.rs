@@ -18,7 +18,7 @@ pub struct CalendarView { id: String, name: String, color: String, enabled: bool
 impl From<&Source> for CalendarView {
     fn from(s: &Source) -> Self { Self { id:s.id.clone(), name:s.name.clone(), color:s.color.clone(), enabled:s.enabled, ics:s.ics.clone(), checked:s.checked } }
 }
-fn protect(data: &[u8], encrypt: bool) -> Result<Vec<u8>, String> {
+pub(crate) fn protect(data: &[u8], encrypt: bool) -> Result<Vec<u8>, String> {
     let input = CRYPT_INTEGER_BLOB { cbData:data.len() as u32, pbData:data.as_ptr() as *mut u8 };
     let mut output = CRYPT_INTEGER_BLOB::default();
     unsafe {
@@ -107,7 +107,7 @@ pub async fn calendar_save(app:AppHandle,id:Option<String>,name:String,color:Str
 pub async fn calendar_refresh(app:AppHandle,id:String)->Result<CalendarView,String> {
     let _guard=LOCK.lock().await; let mut sources=load(&app)?;
     let source=sources.iter_mut().find(|s|s.id==id).ok_or("Календарь не найден")?;
-    fetch(source).await?; let view=CalendarView::from(&*source); save(&app,&sources)?; Ok(view)
+    fetch(source).await?; let view=CalendarView::from(&*source); save(&app,&sources)?; let _=app.emit("calendars-changed",()); Ok(view)
 }
 #[tauri::command]
 pub async fn calendar_remove(app:AppHandle,id:String)->Result<(),String> {

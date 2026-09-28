@@ -34,8 +34,26 @@ jobs:
           if ((Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version -ne $version) { throw 'Tauri version mismatch' }
           if (!(Select-String -Path src-tauri/Cargo.toml -Pattern "^version = `"$([regex]::Escape($version))`"$" -Quiet)) { throw 'Cargo version mismatch' }
       - run: bun test
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.12'
+      - name: Build optional Telegram transport from pinned sources
+        shell: pwsh
+        run: ./scripts/build-telegram-proxy.ps1
+      - name: Verify publisher configuration
+        env:
+          DINOX_GOOGLE_CLIENT_ID: ${{ secrets.DINOX_GOOGLE_CLIENT_ID }}
+          DINOX_GOOGLE_CLIENT_SECRET: ${{ secrets.DINOX_GOOGLE_CLIENT_SECRET }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        shell: pwsh
+        run: |
+          if (!$env:DINOX_GOOGLE_CLIENT_ID.EndsWith('.apps.googleusercontent.com') -or [string]::IsNullOrWhiteSpace($env:DINOX_GOOGLE_CLIENT_SECRET)) { throw 'Missing Google Desktop OAuth publisher configuration' }
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) { throw 'Missing updater signing key' }
       - name: Build and sign updater artifacts
         env:
+          DINOX_GOOGLE_ACCESS_MODE: ${{ vars.DINOX_GOOGLE_ACCESS_MODE || 'unverified' }}
+          DINOX_GOOGLE_CLIENT_ID: ${{ secrets.DINOX_GOOGLE_CLIENT_ID }}
+          DINOX_GOOGLE_CLIENT_SECRET: ${{ secrets.DINOX_GOOGLE_CLIENT_SECRET }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
         run: bun run tauri build --bundles nsis --ci -- --locked

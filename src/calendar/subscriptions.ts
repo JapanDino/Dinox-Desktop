@@ -29,7 +29,7 @@ export function subscriptionUrl(value: string): string {
 export function sameCalendarContent(a: CalendarSource[], b: CalendarSource[]) {
     return a.length === b.length && a.every((s, i) => {
         const next = b[i];
-        return s.id === next.id && s.name === next.name && s.color === next.color && s.enabled === next.enabled && s.ics === next.ics;
+        return s.id === next.id && s.name === next.name && s.color === next.color && s.enabled === next.enabled && s.ics === next.ics && JSON.stringify(s.items)===JSON.stringify(next.items);
     });
 }
 

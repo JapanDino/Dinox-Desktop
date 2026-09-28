@@ -4,9 +4,11 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import {sameCalendarContent} from './subscriptions';
 import type { CalendarSource, CalendarEvent } from './model';
-export function useCalendar(from: number, to: number, eco: boolean) {
+import {accountSources,type CalendarAccount} from './accounts';
+export function useCalendar(from: number, to: number, eco: boolean, cachedOnly = false) {
     const [sources, setSources] = useState<CalendarSource[]>([]);
     const [events, setEvents] = useState<CalendarEvent[]>([]);
+    const [tasks,setTasks]=useState<CalendarEvent[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [parseErrors, setParseErrors] = useState<Record<string, string>>({});
     const [busy, setBusy] = useState(false);
@@ -17,10 +19,11 @@ export function useCalendar(from: number, to: number, eco: boolean) {
     const parseInput = parseSources.current;
     const load = useCallback(async () => {
         try {
-            const values = await invoke<CalendarSource[]>('calendar_list');
+            const [subscriptions,accounts]=await Promise.allSettled([invoke<CalendarSource[]>('calendar_list'),invoke<CalendarAccount[]>('calendar_accounts')]);
+            const values=[...(subscriptions.status==='fulfilled'?subscriptions.value:current.current.filter(s=>!s.accountId)),...(accounts.status==='fulfilled'?accountSources(accounts.value):current.current.filter(s=>s.accountId))];
             if (mounted.current) {
                 setSources(values);
-                setErrors({});
+                setErrors({...subscriptions.status==='rejected'?{storage:String(subscriptions.reason)}:{},...accounts.status==='rejected'?{accounts:String(accounts.reason)}:{}});
             }
         }
         catch (e) {
@@ -36,7 +39,9 @@ export function useCalendar(from: number, to: number, eco: boolean) {
         setBusy(true);
         const failures: Record<string, string> = {};
         const refreshed = new Map<string, CalendarSource>();
-        for (const source of current.current.filter(s => s.enabled)) {
+        const accountIds=[...new Set(current.current.filter(s=>s.enabled).map(s=>s.accountId).filter((id):id is string=>!!id))];
+        for(const id of accountIds){try{const all=await invoke<CalendarAccount[]>('calendar_account_refresh',{id});for(const source of accountSources(all))refreshed.set(source.id,source);}catch(error){failures[id]=String(error);}}
+        for (const source of current.current.filter(s => s.enabled&&!s.accountId)) {
             try {
                 const next = await invoke<CalendarSource>('calendar_refresh', { id: source.id });
                 refreshed.set(next.id, next);
@@ -48,7 +53,7 @@ export function useCalendar(from: number, to: number, eco: boolean) {
         running.current = false;
         if (mounted.current) {
             // Preserve source edits/removals made while the network request was pending.
-            setSources(old => old.map(s => { const next = refreshed.get(s.id); return next ? {...s, ics: next.ics, checked: next.checked} : s; }));
+            setSources(old => old.map(s => { const next = refreshed.get(s.id); return next ? {...s, ics: next.ics, items:next.items,checked: next.checked} : s; }));
             setErrors(failures);
             setBusy(false);
         }
@@ -60,6 +65,7 @@ export function useCalendar(from: number, to: number, eco: boolean) {
         return () => { mounted.current = false; unlisten.then(f => f()).catch(console.error); };
     }, [load]);
     useEffect(() => {
+        if (cachedOnly) return;
         const check = () => { if (Date.now() - lastAttempt.current >= (eco ? 30 : 10) * 60000 && current.current.some(s => s.enabled))
             void refresh(); };
         check();
@@ -67,21 +73,22 @@ export function useCalendar(from: number, to: number, eco: boolean) {
         window.addEventListener('online', check);
         document.addEventListener('visibilitychange', check);
         return () => { clearInterval(timer); window.removeEventListener('online', check); document.removeEventListener('visibilitychange', check); };
-    }, [eco, refresh, sources.length]);
+    }, [eco, refresh, sources.length, cachedOnly]);
     useEffect(() => {
         if (!parseInput.some(s => s.enabled)) {
             setEvents([]);
+            setTasks([]);
             setParseErrors({});
             return;
         }
         const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
         const timeout = setTimeout(() => { worker.terminate(); setParseErrors({ parse: tr("\u0420\u0430\u0437\u0431\u043E\u0440 \u043A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u044F \u0437\u0430\u043D\u044F\u043B \u0441\u043B\u0438\u0448\u043A\u043E\u043C \u0434\u043E\u043B\u0433\u043E. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u044C \u043C\u0435\u043D\u044C\u0448\u0435\u0433\u043E \u0440\u0430\u0437\u043C\u0435\u0440\u0430.") }); }, 8000);
-        worker.onmessage = ({ data }) => { clearTimeout(timeout); setEvents(data.events); setParseErrors(data.errors); worker.terminate(); };
+        worker.onmessage = ({ data }) => { clearTimeout(timeout); setEvents(data.events);setTasks(data.tasks||[]); setParseErrors(data.errors); worker.terminate(); };
         worker.onerror = () => { clearTimeout(timeout); setParseErrors({ parse: tr("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C \u043A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u044C") }); worker.terminate(); };
         worker.postMessage({ sources: parseInput, from, to });
         return () => { clearTimeout(timeout); worker.terminate(); };
     }, [parseInput, from, to]);
-    return { range: {from, to}, sources, events, errors: { ...errors, ...parseErrors }, busy, refresh, load };
+    return { range: {from, to}, sources, events,tasks, errors: { ...errors, ...parseErrors }, busy, refresh, load };
 }
 export function useReminders(events: CalendarEvent[], minutes: number) {
     const [active, setActive] = useState<CalendarEvent | null>(null);

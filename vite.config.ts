@@ -40,6 +40,7 @@ export default defineConfig(async () => ({
         settings: "settings.html",
         dock: "dock.html",
         launcher: "launcher.html",
+        widgets: "widgets.html",
       },
     },
   },

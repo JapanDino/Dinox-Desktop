@@ -3,7 +3,7 @@ import { useShellHeartbeat } from './hooks/useShellHeartbeat';
 import { useBloomAppearance } from './appearance/BloomAppearance';
 import { useNotifications } from './notifications/useNotifications';
 import { NotificationPanel } from './notifications/NotificationPanel';
-import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import { motion, AnimatePresence, useAnimation, useReducedMotion } from "framer-motion";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
@@ -194,11 +194,14 @@ function App() {
     useShellHeartbeat();
     useBloomAppearance();
     const notifications = useNotifications();
+    const reducedMotion = useReducedMotion();
     useEffect(() => {
         return initTheme();
     }, []);
     const [time, setTime] = useState("");
     const [isHovered, setIsHovered] = useState(false);
+    const hoverExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => () => {if(hoverExitTimer.current)clearTimeout(hoverExitTimer.current);}, []);
     const [calendarPinned, setCalendarPinned] = useState(false);
     const [calendarDate, setCalendarDate] = useState(() => dayStart(new Date()));
     const eco = useEcoMode();
@@ -702,6 +705,9 @@ function App() {
     }, [notchMode, windowLabel]);
     // Bloom mode state: 'music', 'calendar', 'command-center', or 'status'
     const [bloomMode, setBloomMode] = useState<'music' | 'calendar' | 'command-center' | 'status'>('status');
+    useEffect(() => {
+        if (bloomMode === 'calendar') setCalendarDate(dayStart(new Date()));
+    }, [bloomMode]);
     // Window height is now kept constant to prevent rendering layout lag and sharp corners
     const lastScrollTime = useRef(0);
     const handleWheel = (e: React.WheelEvent) => {
@@ -1226,6 +1232,15 @@ function App() {
     };
     // Music mode shows any time we have media info (playing or paused) and music mode setting is enabled
     const isMusicMode = mediaInfo.has_media && bloomMode === 'music' && settingsMusicModeEnabled;
+    // Keep the clock and persistent indicators on one fixed rail while the shell expands.
+    const compactHeaderWidth = Math.min(
+        140 + (isMusicMode && settingsVisualizerEnabled && isPlaying ? 30 : 0)
+        + (isMusicMode && settingsAlbumArtEnabled ? 30 : 0)
+        + (islandDate === 'true' ? 90 : 0) + (islandBattery === 'true' ? 65 : 0) + (islandCpu === 'true' ? 65 : 0),
+        viewport.width / scale - 24);
+    const extraLeft = statusWidgets.left.filter(id => !(id === 'cpu' && islandCpu === 'true'));
+    const extraRight = statusWidgets.right.filter(id => !(id === 'battery' && islandBattery === 'true'));
+    const showExtraStatus = !isMusicMode && isHovered && !notifications.visible && (extraLeft.length + extraRight.length > 0);
     // Calculate width dynamically based on enabled features
     const getDynamicWidth = () => {
         if (notifications.visible)
@@ -1244,19 +1259,7 @@ function App() {
             return mediaLayout === 'compact' ? 300 : 340;
         if ((showPowerPulse || showLowBatteryPulse || showUpdatePulse) && !isHovered)
             return 200;
-        let w = 140;
-        if (isMusicMode) {
-            w = 140;
-            if (settingsVisualizerEnabled && isPlaying)
-                w += 30;
-            if (settingsAlbumArtEnabled)
-                w += 30;
-            if (isHovered) {
-                w += 60;
-            }
-        }
-        const indicators = (islandDate === 'true' ? 90 : 0) + (islandBattery === 'true' ? 65 : 0) + (islandCpu === 'true' ? 65 : 0);
-        return Math.min(w + indicators, viewport.width / scale - 24);
+        return compactHeaderWidth;
     };
     const getDynamicHeight = () => {
         if (!isExpanded || !isVisible || isHidden) {
@@ -1269,9 +1272,9 @@ function App() {
         if (reminder.active)
             return 160;
         if (bloomMode === 'command-center')
-            return isHovered ? 230 : 36;
+            return isHovered ? 230 + (showExtraStatus ? 28 : 0) : 36;
         if (bloomMode === 'status')
-            return isHovered ? 62 + (showActions === 'true' ? 36 : 0) + (showUpcoming === 'true' ? 34 : 0) : 36;
+            return isHovered ? 62 + (showExtraStatus ? 28 : 0) + (showActions === 'true' ? 36 : 0) + (showUpcoming === 'true' ? 34 : 0) : 36;
         if (isMusicMode && isHovered) {
             const hasProgressBar = (mediaInfo.duration_ms ?? 0) > 0;
             let h = mediaLayout === 'compact' ? (hasProgressBar ? 132 : 116) : 120;
@@ -1300,9 +1303,9 @@ function App() {
       </AnimatePresence>
 
       <div style={{ zoom: scale, width: '100%', display: 'flex', justifyContent: 'center' }}>
-        <motion.div ref={bloomRef} className={`bloom ${isHovered ? 'expanded' : ''} ${isImpacted ? 'is-impacted' : ''}`} onMouseEnter={() => setIsNotchHovered(true)} onMouseLeave={() => setIsNotchHovered(false)} onWheel={handleWheel} initial={{ y: 250, width: 30.6, height: 44.2, borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, scaleX: 1, scaleY: 1, opacity: 0 }} animate={{
-            y: !isReady ? 250 : (isVisible ? (isHidden ? -100 : 0) : -150),
-            width: !isReady ? 34 : (isExpanded && isVisible && !isHidden ? getDynamicWidth() : (isImpacted ? 39.1 : 30.6)),
+        <motion.div ref={bloomRef} className={`bloom ${isHovered ? 'expanded' : ''} ${isImpacted ? 'is-impacted' : ''}`} onMouseEnter={() => setIsNotchHovered(true)} onMouseLeave={() => setIsNotchHovered(false)} onWheel={handleWheel} initial={{ y: -44, width: 30.6, height: 44.2, borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, scaleX: 1, scaleY: 1, opacity: 0 }} animate={{
+            y: !isReady ? -44 : (isVisible ? (isHidden ? -100 : 0) : -150),
+            width: !isReady ? 34 : (isExpanded && isVisible && !isHidden ? Math.max(compactHeaderWidth,getDynamicWidth()) : (isImpacted ? 39.1 : 30.6)),
             height: !isReady ? 34 : getDynamicHeight(),
             opacity: isVisible ? 1 : 0,
             scaleX: 1,
@@ -1316,11 +1319,14 @@ function App() {
         }} onClick={(e) => {
             e.stopPropagation();
         }} onHoverStart={() => {
+            if(hoverExitTimer.current)clearTimeout(hoverExitTimer.current);
             setIsHovered(true);
             // Hover expands the current section; it never replaces a pending clock click.
         }} onHoverEnd={() => {
             if (calendarPinned && notchMode !== 'hover')
                 return;
+            if(hoverExitTimer.current)clearTimeout(hoverExitTimer.current);
+            hoverExitTimer.current=setTimeout(()=>{
             setIsHovered(false);
             const targetMode = mediaInfo.has_media && isPlaying && settingsMusicCompactNotch ? 'music' : 'status';
             if (bloomMode === 'music') {
@@ -1329,16 +1335,11 @@ function App() {
             else if (bloomMode === 'command-center' || bloomMode === 'calendar' || bloomMode === 'status') {
                 setBloomMode(targetMode);
             }
+            },140);
         }} style={{ originY: 0 }} transition={{
-            width: { type: "spring", stiffness: 400, damping: 31 },
-            height: { type: "spring", stiffness: 450, damping: 29 },
-            y: { type: "spring", stiffness: 550, damping: 45, mass: 0.8, restDelta: 0.001 },
-            opacity: { duration: 0.2 },
-            borderTopLeftRadius: { type: "spring", stiffness: 1000, damping: 40 },
-            borderTopRightRadius: { type: "spring", stiffness: 1000, damping: 40 },
-            borderBottomLeftRadius: { type: "spring", stiffness: 1000, damping: 40 },
-            borderBottomRightRadius: { type: "spring", stiffness: 1000, damping: 40 },
-            default: { type: "spring", stiffness: 500, damping: 30, mass: 1 }
+            default: {type:'tween',duration:reducedMotion ? 0 : eco ? .16 : .32,ease:[.22,1,.36,1]},
+            opacity: {duration:reducedMotion?0:.14},
+            filter: {duration:reducedMotion?0:.14}
         }}>
 
         <AnimatePresence>
@@ -1349,8 +1350,8 @@ function App() {
             </motion.div>)}
         </AnimatePresence>
         <AnimatePresence mode="wait">
-          {isExpanded && (<motion.div key="bloom-content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1 }} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', borderRadius: 'inherit' }}>
-                  <motion.div key="standard-view-group" initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5, transition: { duration: 0.1 } }} transition={{ duration: 0.2 }} style={{ width: '100%' }}>
+          {isExpanded && (<motion.div key="bloom-content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1 }} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', borderRadius: 'inherit', overflow:'hidden' }}>
+                  <motion.div key="standard-view-group" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} style={{ width: compactHeaderWidth - 24, maxWidth: '100%', flexShrink: 0 }}>
                     <div className="main-row">
                       <AnimatePresence mode="wait">
                         {(showPowerPulse || showLowBatteryPulse || showUpdatePulse) && !isHovered ? (showUpdatePulse ? (<motion.div key="update-pulse-view" initial={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }} animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }} exit={{ opacity: 0, scale: 1.05, filter: "blur(4px)" }} className="power-pulse-content">
@@ -1365,19 +1366,17 @@ function App() {
                             </motion.div>)) : (<motion.div key="standard-view" className="main-row-inner" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                             {/* Left: visualizer (music) or weather (command-center, calendar) */}
                             <div className="side-content left">
-                              {!isHovered && islandCpu === 'true' && renderStatusWidget('cpu')}
+                              {islandCpu === 'true' && renderStatusWidget('cpu')}
                               {isMusicMode && settingsVisualizerEnabled && !eco ? (<AnimatePresence>
                                   {settingsVisualizerEnabled && (<motion.div key="visualizer" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.8, opacity: 0 }}>
                                       <Visualizer isPlaying={isPlaying}/>
                                     </motion.div>)}
-                                </AnimatePresence>) : (!isMusicMode && isHovered && statusWidgets.left.length > 0) ? (<motion.div key="left-widgets" className="passive-features-group" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-                                  {statusWidgets.left.map(renderStatusWidget)}
-                                </motion.div>) : null}
+                                </AnimatePresence>) : null}
                             </div>
 
                             {/* Center - Time (always visible) */}
                             <div className="time-center">
-                              {!isHovered && islandDate === 'true' && <span className="island-date">{new Date().toLocaleDateString(locale(), {day:'numeric', month:'short'})}</span>}
+                              {islandDate === 'true' && <span className="island-date">{new Date().toLocaleDateString(locale(), {day:'numeric', month:'short'})}</span>}
                               <button type="button" className="time-flip-container" aria-label={tr("Открыть календарь")} aria-expanded={isCalendarMode} onClick={toggleCalendarMode}>
                                 <AnimatePresence initial={false}>
                                   {isCompactTimerVisible || isTimerFinished ? (<motion.span key="timer" className={`time compact-timer ${isTimerFinished ? 'timer-finished' : ''}`} initial={{ rotateX: -90, opacity: 0 }} animate={{ rotateX: 0, opacity: 1 }} exit={{ rotateX: 90, opacity: 0 }} transition={{ type: "spring", stiffness: 600, damping: 30 }}>
@@ -1392,7 +1391,7 @@ function App() {
 
                             {/* Right: album art (music) or battery (command-center, calendar) */}
                             <div className="side-content right">
-                              {!isHovered && islandBattery === 'true' && renderStatusWidget('battery')}
+                              {islandBattery === 'true' && renderStatusWidget('battery')}
                               {isMusicMode && settingsAlbumArtEnabled ? (<AnimatePresence mode="wait">
                                   <motion.div key="album-art" className="album-art-glow-wrapper" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, y: -20, scale: 0.8, filter: "blur(8px)" }} transition={{ duration: 0.12 }}>
                                     {albumArtUrl && settingsCompactGlowEnabled && (<img src={albumArtUrl} alt="" className="album-art-glow-bg" draggable={false}/>)}
@@ -1421,14 +1420,13 @@ function App() {
                                     </div>
                                   </button>
                                   </motion.div>
-                                </AnimatePresence>) : (!isMusicMode && isHovered && statusWidgets.right.length > 0) ? (<motion.div key="right-widgets" className="passive-features-group" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }}>
-                                  {statusWidgets.right.map(renderStatusWidget)}
-                                </motion.div>) : null}
+                                </AnimatePresence>) : null}
                             </div>
                           </motion.div>)}
                       </AnimatePresence>
                     </div>
                   </motion.div>
+              {showExtraStatus && <div className="expanded-status-row"><div className="passive-features-group">{extraLeft.map(renderStatusWidget)}</div><div className="passive-features-group">{extraRight.map(renderStatusWidget)}</div></div>}
               <AnimatePresence mode="wait">
                 {!notifications.visible && isHovered && isMusicMode && !isCalendarMode && (<motion.div key="expanded-music" className="expanded-music-container" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.1 } }} transition={{ type: "spring", stiffness: 500, damping: 30 }}>
                     <nav className="music-section-nav" aria-label={tr("Разделы Dinox")}>
@@ -1517,7 +1515,7 @@ function App() {
                   </motion.div>)}
               </AnimatePresence>
 
-              {notifications.visible && <NotificationPanel model={notifications}/>}
+              <AnimatePresence>{notifications.visible && <NotificationPanel key="notifications" model={notifications}/>}</AnimatePresence>
               {!notifications.visible && bloomMode === 'status' && isHovered && <><ProfilePicker />{showActions === 'true' && <PersonalActions />}{showUpcoming === 'true' && <UpcomingEvent events={calendar.events} onOpen={() => setBloomMode('calendar')}/>}</>}
               {!notifications.visible && reminder.active && <ReminderCard reminder={reminder}/>}
 

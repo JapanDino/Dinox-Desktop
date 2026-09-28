@@ -4,24 +4,22 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, emit } from '@tauri-apps/api/event';
 import { usePersonalSetting } from '../components/PersonalFeatures';
 import { freshNotices, isQuiet, noticeKey, notificationDefaults, parseNotificationOptions, type Notice } from './model';
+import {popup,livePopups,resumePopups,type Popup} from './lifetime';
 export function useNotifications() {
     const [raw] = usePersonalSetting('bloom-notifications', JSON.stringify(notificationDefaults));
     const options = parseNotificationOptions(raw), optionsRef = useRef(options);
     optionsRef.current = options;
-    const [history, setHistory] = useState<Notice[]>([]), [popups, setPopups] = useState<{
-        notice: Notice;
-        expires: number;
-    }[]>([]), [center, setCenter] = useState(false), [error, setError] = useState('');
+    const [history, setHistory] = useState<Notice[]>([]), [popups, setPopups] = useState<Popup[]>([]), [center, setCenter] = useState(false), [error, setError] = useState('');
     const previous = useRef<Notice[] | null>(null), read = useRef(new Set<string>()), hidden = useRef(new Set<string>()), paused = useRef(0), current = useRef(history);
     current.current = history;
     const allowed = (n: Notice) => !options.blocked.includes(n.app_id);
     const unread = history.filter(n => allowed(n) && !read.current.has(noticeKey(n))).length;
     useEffect(() => { void emit('bloom-notification-count', options.enabled ? unread : 0); }, [unread, options.enabled]);
     useEffect(() => {
-        const open = listen('bloom-open-notifications', () => { setCenter(true); setPopups([]); });
+        const open = listen('bloom-open-notifications', () => { paused.current=0;setCenter(true); setPopups([]); });
         const count = listen('notification-count-request', () => { void emit('bloom-notification-count', optionsRef.current.enabled ? current.current.filter(n => !optionsRef.current.blocked.includes(n.app_id) && !read.current.has(noticeKey(n))).length : 0); });
-        const preview = listen<Notice>('bloom-preview-notification', ({ payload }) => { if (optionsRef.current.enabled)
-            setPopups([{ notice: payload, expires: Date.now() + optionsRef.current.duration * 1000 }]); });
+        const preview = listen<Notice>('bloom-preview-notification', ({ payload }) => { if (optionsRef.current.enabled) {
+            paused.current=0;setPopups([popup(payload,optionsRef.current.duration)]); } });
         return () => { for (const stop of [open, count, preview])
             void stop.then(f => f()); };
     }, []);
@@ -55,7 +53,7 @@ export function useNotifications() {
                 for(const notice of news){read.current.delete(noticeKey(notice));hidden.current.delete(noticeKey(notice));}
                 if (news.length && !isQuiet(cfg)) {
                     for(const notice of news)void emit('bloom-app-notice',{app_id:notice.app_id,app_name:notice.app_name});
-                    setPopups(old => [...news.map(notice => ({ notice, expires: Date.now() + cfg.duration * 1000 })), ...old.filter(p=>!news.some(n=>noticeKey(n)===noticeKey(p.notice)))].slice(0, cfg.maxVisible));
+                    setPopups(old => [...news.map(notice => popup(notice,cfg.duration)), ...livePopups(old,Date.now(),!!paused.current).filter(p=>!news.some(n=>noticeKey(n)===noticeKey(p.notice)))].slice(0, cfg.maxVisible));
                 }
                 const keys = new Set(next.map(noticeKey));
                 read.current = new Set([...read.current].filter(k => keys.has(k)));
@@ -83,11 +81,16 @@ export function useNotifications() {
     useEffect(() => { if (!popups.length) {
         paused.current = 0;
         return;
-    } const timer = setInterval(() => { if (!paused.current)
-        setPopups(old => old.filter(x => x.expires > Date.now())); }, 500); return () => clearInterval(timer); }, [popups.length]);
+    }
+    const expire=()=>setPopups(old=>{const next=livePopups(old,Date.now(),!!paused.current);return next.length===old.length?old:next;});
+    const release=()=>{paused.current=0;expire();};
+    const timer=setInterval(expire,250);
+    window.addEventListener('blur',release);document.addEventListener('visibilitychange',release);
+    return()=>{clearInterval(timer);window.removeEventListener('blur',release);document.removeEventListener('visibilitychange',release);};
+    }, [popups.length]);
     const close = () => { paused.current = 0; history.forEach(n => read.current.add(noticeKey(n))); setCenter(false); setPopups([]); };
     return { options, history: history.filter(n => allowed(n) && !hidden.current.has(noticeKey(n))), popups, center, error, unread, visible: center || popups.length > 0, close,
-        showCenter: () => { setCenter(true); setPopups([]); },
+        showCenter: () => { paused.current=0;setCenter(true); setPopups([]); },
         dismiss: (notice: Notice) => { hidden.current.add(noticeKey(notice)); read.current.add(noticeKey(notice)); setPopups(old => old.filter(x => noticeKey(x.notice) !== noticeKey(notice))); },
         pause: (value: boolean) => { if (value) {
             if (!paused.current)
@@ -96,7 +99,7 @@ export function useNotifications() {
         else if (paused.current) {
             const elapsed = Date.now() - paused.current;
             paused.current = 0;
-            setPopups(old => old.map(x => ({ ...x, expires: x.expires + elapsed })));
+            setPopups(old => resumePopups(old,elapsed));
         } },
     };
 }

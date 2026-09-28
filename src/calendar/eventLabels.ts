@@ -4,6 +4,7 @@ import {sameDay,type CalendarEvent} from './model';
 export function eventTime(event: CalendarEvent) {
     const clock = (n:number) => new Date(n).toLocaleTimeString(locale(), {hour:'2-digit',minute:'2-digit'});
     const dates = new Intl.DateTimeFormat(locale(), {day:'numeric',month:'short',year:'numeric'});
+    if(event.kind==='task')return event.unscheduled?(locale().startsWith('ru')?'Без срока':'No date'):event.allDay?(locale().startsWith('ru')?'Без времени':'No time'):clock(event.start);
     if (event.allDay) {
         // ICS DTEND is exclusive: a Monday end means the last occupied day is Sunday.
         const last = Math.max(event.start, event.end - 1);

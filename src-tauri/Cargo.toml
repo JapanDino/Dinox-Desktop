@@ -1,6 +1,6 @@
 [package]
 name = "bloom"
-version = "4.1.0"
+version = "4.2.0"
 description = "Dinox desktop shell for Windows 11"
 authors = ["JapanDino", "sehaz (original Bloom)"]
 edition = "2021"
@@ -78,3 +78,7 @@ image = "0.25"
 tauri-plugin-drag = "2.1.1"
 tauri-plugin-dialog = "2"
 rustfft = "6"
+uuid = { version = "1", features = ["v4"] }
+sha2 = "0.10"
+roxmltree = "0.20"
+chrono = "0.4"

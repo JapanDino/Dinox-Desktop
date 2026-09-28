@@ -1466,7 +1466,7 @@ fn re_register_appbars(app: &AppHandle, settings: &HashMap<String, serde_json::V
 
 #[tauri::command]
 pub fn save_setting(app: AppHandle, key: String, value: serde_json::Value) -> Result<(), String> {
-    if key=="dinox-search-shortcut"{crate::launcher::parse_shortcut(value.as_str().ok_or("Invalid search shortcut")?)?;}
+    if key=="dinox-search-shortcut"||key=="dinox-widgets-shortcut"{crate::launcher::parse_shortcut(value.as_str().ok_or("Invalid search shortcut")?)?;}
     let guard=SETTINGS_WRITE_LOCK.lock().map_err(|_|"Settings lock unavailable".to_string())?;
     let path = app.path().app_config_dir().map_err(|e| e.to_string())?.join("settings.json");
     if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
@@ -1491,7 +1491,8 @@ pub fn save_setting(app: AppHandle, key: String, value: serde_json::Value) -> Re
     let _ = app.emit("settings-changed", serde_json::json!({ "key": &key, "value": &settings[&key] }));
 
     if key == "bloom-language" {crate::localization::apply(&app);}
-    if key == "dinox-search-shortcut" {crate::launcher::refresh_hotkey();}
+    if matches!(key.as_str(), "dinox-search-shortcut"|"dinox-widgets-shortcut"|"dinox-widgets-enabled") {crate::launcher::refresh_hotkey();}
+    if key=="dinox-widgets-enabled" && settings[&key].as_str()!=Some("true") {let _=crate::widgets::hide(&app);}
     if key == "bloom-shell-mode" {
         // Explicit selection acknowledges a recovery. Background events cannot.
         crate::shell_controller::reset_recovery();

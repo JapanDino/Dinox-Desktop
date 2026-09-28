@@ -1,0 +1,2 @@
+# Keep the pinned upstream bytes identical on Windows checkouts for SHA-256 verification.
+vendor/tg-ws-proxy/proxy/*.py -text

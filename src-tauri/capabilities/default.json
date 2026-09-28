@@ -7,7 +7,9 @@
     "overlay",
     "settings",
     "dock",
-    "launcher"
+    "launcher",
+    "widgets",
+    "sticky-*"
   ],
   "permissions": [
     "core:default",

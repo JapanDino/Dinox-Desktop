@@ -1,0 +1,17 @@
+{
+  "sha256": {
+    "proxy/utils.py": "da29e7d3fc36d2f57c001fb9822c86f87748a6a2ba52750d2ba55b606b3268cb",
+    "proxy/pool.py": "0633d09a059b9ebec8a86197beb22c4d878e690c421c778f356e5aa4dbf698cb",
+    "proxy/raw_websocket.py": "273b2652b5db382bb6e83e571281029af69ca3fedb9722b6c4b95ee2cee4d081",
+    "proxy/_aes.py": "5b07f23c1d65140fb933e2c31d42817012d2ff4b60664f69146fe2554d54d528",
+    "proxy/balancer.py": "3d4330488b968e146286b14790c0814eae3efe5d0f26206572369ca6368eed24",
+    "proxy/stats.py": "be6174fe31392288c136cbd4ba9537cfb16efc839a148ae35aca7c467aeea73d",
+    "proxy/__init__.py": "6e3ec0733babb25144a11f8658cc614e6232d87fca3231c90f373264bb8951ba",
+    "proxy/bridge.py": "31aed607bac67b00bd0d099d32329871de928ec5b504267bf737d610b115a7d5",
+    "proxy/config.py": "57c189359378c97aad253af04f28ef3c14cb548d53bb891994d29557387ee377",
+    "proxy/fake_tls.py": "ce4ce10990117f96522558bc38f2798630b4b736854fd0bf738ba886332b9cb9",
+    "proxy/tg_ws_proxy.py": "a9cadcd65a9722c9ac185b2d19673bec2b55efe382a96471322875d7fdc138af"
+  },
+  "commit": "caa949bee0873d2b95dfb4fbeb1b7868b0ee3843",
+  "repository": "https://github.com/Flowseal/tg-ws-proxy"
+}

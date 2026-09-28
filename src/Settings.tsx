@@ -1,6 +1,8 @@
 import {tr} from './i18n/core';
+import {TelegramSettings} from './telegram/TelegramSettings';
 import {tx} from './desktopText';
 import {LayoutEditor} from './settings/LayoutEditor';
+import {WidgetSettings} from './widgets/WidgetSettings';
 import { useBloomAppearance } from './appearance/BloomAppearance';
 import { NotificationSettings } from './notifications/NotificationSettings';
 import { StrictMode, useState, useEffect } from "react";
@@ -9,7 +11,7 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { Effect } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { X, Settings, Palette, PanelTop, Monitor, Layers, Info, Bell } from "lucide-react";
+import { X, Settings, Palette, PanelTop, Monitor, Layers, Info, Bell, Send } from "lucide-react";
 import { useSettings, GeneralTab, AppearanceTab, NotchTab, DockTab, OverlaysTab, AboutTab, } from "./settings/index";
 import type { SettingsTab } from "./settings/index";
 import { initTheme } from "./theme";
@@ -21,6 +23,7 @@ const TABS: {
     icon: typeof Settings;
 }[] = [
     {id:"workspace",get label(){return tx("Рабочий стол","Workspace");},icon:Monitor},
+    {id:"telegram",label:"Telegram",icon:Send},
     { id: "general", get label() {
             return tr("General");
         }, icon: Settings },
@@ -100,7 +103,8 @@ function SettingsApp() {
         </div>
 
         <div className="settings-content">
-          {activeTab === "workspace" && <LayoutEditor/>}
+          {activeTab === "telegram" && <TelegramSettings/>}
+          {activeTab === "workspace" && <><LayoutEditor/><WidgetSettings/></>}
           {activeTab === "notifications" && <NotificationSettings />}
           {activeTab === "general" && (<GeneralTab autostart={settings.autostart} toggleAutostart={settings.toggleAutostart} timeFormat24h={settings.timeFormat24h} toggleTimeFormat24h={settings.toggleTimeFormat24h} showUpdateIndicator={settings.showUpdateIndicator} toggleUpdateIndicator={settings.toggleUpdateIndicator} lowBatteryThreshold={settings.lowBatteryThreshold} handleThresholdChange={settings.handleThresholdChange} restartBloom={settings.restartBloom} quitBloom={settings.quitBloom}/>)}
           {activeTab === "appearance" && (<AppearanceTab themeMode={settings.themeMode} handleThemeModeChange={settings.handleThemeModeChange} themeColor={settings.themeColor} handleThemeColorChange={settings.handleThemeColorChange} themeOpacity={settings.themeOpacity} handleOpacityChange={settings.handleOpacityChange} themeSaturation={settings.themeSaturation} handleSaturationChange={settings.handleSaturationChange} themeBrightness={settings.themeBrightness} handleBrightnessChange={settings.handleBrightnessChange} cornersEnabled={settings.cornersEnabled} toggleCorners={settings.toggleCorners} scale={settings.scale} handleScaleChange={settings.handleScaleChange}/>)}

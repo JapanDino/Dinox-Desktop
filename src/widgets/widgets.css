@@ -1,0 +1,106 @@
+.widget-board{width:100%;height:100%;min-height:0;display:flex;flex-direction:column;position:relative;background:#000;color:#f5f5f5;font:14px Inter,"Segoe UI",sans-serif;isolation:isolate;box-sizing:border-box;color-scheme:dark}
+.widget-board *{box-sizing:border-box}.widget-board button{font:inherit;border:1px solid transparent;border-radius:10px;background:#151515;color:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:34px;padding:7px 10px}.widget-board button:hover{background:#242424}.widget-board button:disabled{opacity:.45;cursor:default}.widget-board button:focus-visible,.widget-board input:focus-visible{outline:2px solid #c7bbef;outline-offset:3px}.widget-board h1,.widget-board h2,.widget-board h3,.widget-board p{margin:0}.wb-top{padding:26px 30px 22px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #222}.wb-brand{font-size:15px;color:#a3a3a3;letter-spacing:-.5px}.wb-top h1{font-size:29px;font-weight:600;letter-spacing:-1px;margin:4px 0}.wb-top p{font-size:13px;color:#a3a3a3}.wb-tools{display:flex;align-items:center;gap:7px}.wb-key{font-size:11px;color:#aaa;margin-right:10px}.wb-scroll{min-height:0;flex:1;overflow-y:auto;overscroll-behavior:contain;padding:24px 30px;scrollbar-width:thin;scrollbar-color:#333 transparent}.wb-grid{display:grid;grid-template-columns:minmax(250px,.85fr) minmax(0,1.4fr);gap:18px;align-items:start}.wb-card{border:1px solid #282828;border-radius:20px;padding:20px;min-width:0;background:#0c0c0c}.wb-card>header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}.wb-card h2{font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}.wb-card>header>span{font-size:11px;color:#aaa}.wb-today{grid-column:1;grid-row:1}.wb-today-events{max-height:230px;overflow:auto;scrollbar-width:thin}.wb-calendar{grid-column:2;grid-row:1 / span 2}.wb-focus{grid-column:1;grid-row:2}.wb-no-calendar{grid-template-columns:repeat(2,minmax(0,1fr))}.wb-no-calendar .wb-focus{grid-column:2;grid-row:1}.wb-event{width:100%;text-align:left;background:transparent!important;justify-content:flex-start!important;align-items:stretch!important;padding:10px 4px!important;gap:10px!important}.wb-event:hover{background:#1b1b1b!important}.wb-event>i{width:3px;border-radius:3px;flex:none}.wb-event>span{min-width:0;display:flex;flex-direction:column;gap:5px}.wb-event strong{font-size:13px;font-weight:500;line-height:1.5;overflow-wrap:anywhere}.wb-event small{font-size:11px;line-height:1.5;color:#aaa}.wb-calendar>header{flex-wrap:wrap}.wb-nav{display:flex;align-items:center;gap:2px}.wb-nav button{background:transparent;font-size:11px;padding:5px}.wb-calendar-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px}.wb-segments{display:flex;background:#171717;padding:3px;border-radius:11px}.wb-segments button{font-size:12px;min-height:29px;padding:5px 10px;background:transparent}.wb-segments button[aria-pressed=true]{background:#303030}.wb-calendar-controls>span{font-size:10px;color:#999}.wb-month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;touch-action:pan-y}.wb-month>span{text-align:center;color:#999;font-size:11px;padding:4px 0 10px}.wb-month>button{padding:5px 0;min-height:42px;flex-direction:column;gap:3px;background:transparent}.wb-month button>div{display:flex;gap:3px;height:4px}.wb-month i{height:3px;width:3px;border-radius:50%}.wb-month button.outside{color:#777}.wb-month button.today{color:#c8b8ff}.wb-month button.selected{background:#f0f0f0;color:#111}.wb-day{border-top:1px solid #252525;margin-top:20px;padding-top:18px}.wb-day h3{font-size:12px;color:#b7b7b7;margin-bottom:8px;font-weight:500}.wb-empty{padding:24px 8px;text-align:center;color:#a3a3a3;font-size:13px;line-height:1.6}.wb-empty p{margin:10px 0}.wb-empty button{margin-top:8px}.wb-task{width:100%;border:0;border-bottom:1px solid #2a2a2a;background:transparent;font:inherit;color:inherit;padding:5px 0 12px;border-radius:0}.wb-task::placeholder{color:#888}.wb-countdown{font-size:56px;font-weight:500;letter-spacing:-2px;line-height:1.3;margin:14px 0 8px;font-variant-numeric:tabular-nums;text-align:center}.wb-countdown>span{color:#888}.wb-progress{height:3px;border-radius:3px;background:#2b2b2b;overflow:hidden}.wb-progress i{display:block;height:100%;background:#ded6f6}.wb-presets{display:flex;justify-content:center;gap:6px;margin:16px 0}.wb-presets button{background:transparent;font-size:12px;min-height:28px}.wb-presets button[aria-pressed=true]{background:#252525}.wb-focus-actions{display:flex;gap:8px}.wb-focus-actions .wb-primary{flex:1;background:#f4f4f4;color:#111;font-weight:600}.wb-hint{font-size:10px;line-height:1.5;color:#999;margin-top:12px!important}.wb-footer{padding:14px 30px;border-top:1px solid #222;display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:11px;color:#aaa}.wb-footer small{display:block;color:#888;margin-top:4px;font-size:10px}.wb-preferences{max-width:650px;margin:auto}.wb-back{margin-bottom:20px}.widget-settings{margin-top:26px;padding-top:20px;border-top:1px solid #282828}.widget-choices{display:flex;flex-wrap:wrap;gap:16px;margin:18px 0}.widget-choice{display:flex;gap:8px;align-items:center;font-size:13px}.wb-error{color:#edc4b1;padding:10px}.wb-detail-backdrop{position:absolute;inset:0;background:#000b;display:grid;place-items:center;padding:24px;z-index:3}.wb-detail{position:relative;width:100%;max-width:500px;max-height:100%;overflow:auto;background:#111;border:1px solid #333;border-radius:18px;padding:28px;overflow-wrap:anywhere}.wb-detail h2{font-size:22px;margin:16px 25px 14px 0}.wb-detail p{display:flex;gap:6px;color:#bbb;margin-bottom:16px;font-size:13px;line-height:1.5}.wb-detail>div{white-space:pre-wrap;line-height:1.6;font-size:13px}.wb-detail-close{position:absolute;right:12px;top:12px}.wb-detail>small{display:block;padding-right:35px}
+html:has(.widget-board),body:has(.widget-board),#root:has(.widget-board){height:100%;margin:0;overflow:hidden}
+@media(max-width:740px){.wb-top{padding:20px}.wb-scroll{padding:18px}.wb-grid{grid-template-columns:1fr}.wb-card.wb-calendar,.wb-card.wb-today,.wb-card.wb-focus{grid-column:1;grid-row:auto}.wb-calendar{order:1}.wb-today{order:0}.wb-focus{order:2}.wb-key{display:none}.wb-footer{padding:12px 18px}.wb-top h1{font-size:25px}.wb-today-events{max-height:190px}}
+@media(max-width:420px){.wb-card{padding:15px}.wb-calendar-controls>span{display:none}.wb-top{padding:15px}.wb-scroll{padding:12px}.wb-month{gap:2px}.wb-month>button{min-height:38px}.wb-tools{gap:3px}}
+.widget-board{line-height:1.4}.widget-board input{user-select:text}.wb-top{padding:18px 24px}.wb-top h1{line-height:1.2}.wb-card{padding:18px}.wb-countdown{font-size:48px;line-height:1.15}.wb-presets{margin:12px 0}.wb-scroll{padding:20px 24px}
+.wb-focus>header{margin-bottom:10px}.wb-focus .wb-countdown{margin:8px 0}.wb-focus .wb-presets{margin:8px 0}.wb-focus .wb-hint{font-size:10px;line-height:1.4;margin-top:8px!important}.wb-close-error{position:fixed;bottom:8px;left:8px;right:8px;background:#422;color:white;padding:14px;z-index:10}
+.wb-timeline{height:420px;min-height:240px;display:flex;--cal-text:#f5f5f5;--cal-muted:#a3a3a3;--cal-accent:#b7a6ff}.wb-timeline .cal-time-event{min-height:0;padding:4px 5px;display:flex;align-items:stretch;justify-content:flex-start;border:0;border-left:2px solid var(--event-color);border-radius:5px;background:color-mix(in srgb,var(--event-color) 19%,#0c0c0c)}.wb-timeline .cal-week-head button{background:transparent;border:0;border-radius:0;font-size:10px;padding:4px 0 9px;min-height:0}.wb-timeline .cal-span-event{justify-content:flex-start;min-height:30px;font-size:10px;border-radius:5px;padding:4px 7px}.wb-timeline .cal-now-track span{font-size:9px}
+@media(min-width:741px) and (min-height:620px){.wb-timeline{height:auto;min-height:0;flex:1}}
+@media(min-width:741px) and (min-height:620px){.wb-scroll:has(>.wb-grid){overflow:hidden}.wb-grid{height:100%;grid-template-rows:minmax(130px,.65fr) minmax(265px,1fr);align-items:stretch}.wb-card{min-height:0}.wb-today{display:flex;flex-direction:column}.wb-today-events{min-height:0;max-height:none;overflow:auto}.wb-calendar{display:flex;flex-direction:column}.wb-month{flex-shrink:0}.wb-month>button{min-height:34px}.wb-calendar-controls{margin-bottom:12px}.wb-day{min-height:0;flex:1;overflow:auto;scrollbar-width:thin}.wb-focus{overflow:auto;scrollbar-width:thin}.wb-no-calendar{grid-template-rows:1fr}.wb-no-calendar .wb-card{align-self:start}.wb-no-calendar .wb-today-events{max-height:320px}}
+.wb-timeline .cal-week-frame>.cal-week-head,.wb-timeline .cal-week-frame>.cal-span-section,.wb-timeline .cal-week-frame>.cal-week-scroll{min-width:520px}
+.wb-timeline .cal-span-event{min-width:0;margin:0 2px;text-align:left;border:0;border-left:3px solid var(--event-color);background:color-mix(in srgb,var(--event-color) 20%,#0c0c0c)}.wb-timeline .cal-span-toggle{display:block;margin:0 8px 5px auto;padding:4px 8px;font-size:10px;color:var(--cal-muted);background:transparent;border:0;border-radius:6px}
+
+/* The native WebView is transparent. Dim the desktop once, keeping readable
+   cards above it; CSS blur cannot blur other native windows behind a WebView. */
+.widget-board{
+  --wb-gutter:clamp(18px,4vw,72px);
+  background:rgba(0,0,0,var(--wb-backdrop-opacity,.7));
+  padding-inline:max(var(--wb-gutter),calc((100vw - 1600px)/2));
+  animation:wb-reveal 140ms ease-out;
+}
+.wb-top{padding:clamp(20px,4vh,44px) 0 22px;border:0;flex-shrink:0}
+.wb-top h1{font-size:clamp(29px,2.6vw,40px);letter-spacing:-1.2px;margin:5px 0 8px}
+.wb-top p,.wb-brand{color:#ccc}
+.wb-tools{align-self:flex-start;margin-top:6px}
+.wb-tools button{min-width:40px;min-height:40px;background:rgba(12,12,12,.85)}
+.wb-key{color:#ddd}
+.wb-scroll{padding:0 0 20px}
+.wb-grid{gap:clamp(16px,2vw,28px);grid-template-columns:minmax(280px,.65fr) minmax(0,1.6fr)}
+.wb-card{background:rgba(10,10,10,.91);border-color:#ffffff24;border-radius:22px;padding:clamp(18px,2vw,28px)}
+.wb-no-calendar{grid-template-columns:repeat(2,minmax(0,1fr))}
+.wb-footer{padding:14px 0 20px;border-top:1px solid #ffffff25;flex-shrink:0;color:#ddd}
+.wb-footer small{color:#bbb}
+.wb-preferences{padding:24px;background:rgba(10,10,10,.96);border:1px solid #ffffff24;border-radius:22px}
+.wb-backdrop-setting{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:24px 0;font-size:13px}
+.wb-backdrop-setting select{max-width:60%}
+.wb-detail-backdrop{position:fixed}
+html:has(.widget-board),body:has(.widget-board),#root:has(.widget-board){background:transparent}
+@keyframes wb-reveal{from{opacity:0}to{opacity:1}}
+@media(min-width:1100px) and (min-height:800px){
+  .wb-countdown{font-size:72px;margin:22px 0!important}
+  .wb-presets{margin:20px 0!important}
+  .wb-timeline .cal-week-head button{font-size:12px}
+  .wb-timeline .cal-week-head strong{font-size:18px}
+}
+@media(max-width:740px){
+  .widget-board{--wb-gutter:18px}
+  .wb-grid{grid-template-columns:1fr}
+  .wb-top{padding:20px 0}
+  .wb-scroll{padding:0 0 16px}
+  .wb-footer{padding:12px 0}
+  .wb-preferences{padding:16px}
+}
+@media(max-width:420px){.widget-board{--wb-gutter:12px}.wb-card{padding:15px}.wb-top h1{font-size:28px}}
+@media(prefers-reduced-motion:reduce){.widget-board{animation:none}}
+/* Explicit in-app opacity wins over OS transparency preferences. The user can
+   select an opaque backdrop here without changing global Windows settings. */
+
+.wb-scroll:has(>.wb-personal-grid){overflow-y:auto}
+.wb-personal-grid{height:auto;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:none;align-items:start;gap:20px}
+.wb-personal-grid>.wb-card{grid-column:auto;grid-row:auto;order:0;padding:22px;min-height:250px;max-height:470px;overflow:auto;scrollbar-width:thin}
+.wb-personal-grid>.wb-calendar{min-height:450px}
+.wb-personal-grid.wb-week-expanded>.wb-calendar{grid-column:span 2;max-height:none;height:600px}
+.wb-personal-grid .wb-timeline{height:440px;min-height:280px}
+.wb-personal-grid .wb-day{max-height:130px;flex:auto;overflow:auto}
+.wb-personal-grid .wb-today-events{max-height:290px}
+.wb-personal-grid .wb-countdown{font-size:50px;margin:14px 0!important}
+.wb-personal-grid .wb-presets{margin:12px 0!important}
+.wb-inline-form{display:flex;gap:7px;margin-bottom:14px}
+.wb-inline-form input,.wb-project-form input{width:100%;min-width:0;border:1px solid #ffffff25;border-radius:9px;background:#ffffff06;padding:10px;color:inherit;font:inherit}
+.wb-task-list,.wb-project-list{margin:0;padding:0;list-style:none;max-height:235px;overflow:auto;scrollbar-width:thin}
+.wb-task-list li,.wb-project-list li{display:flex;align-items:center;gap:4px;border-bottom:1px solid #ffffff12;padding:5px 0}
+.wb-task-list label{display:flex;align-items:flex-start;gap:10px;flex:1;min-width:0;cursor:pointer;padding:8px 0}
+.wb-task-list input{margin-top:3px;accent-color:#c7bbef;flex:none;width:16px;height:16px}
+.wb-task-list span{overflow-wrap:anywhere;line-height:1.5}.wb-task-list .done{text-decoration:line-through;color:#999}
+.wb-task-list small{display:block;font-size:10px;color:#aaa}.wb-task-list small.overdue{color:#f1bfa9}
+.wb-due{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10px;color:#aaa;margin:0 0 10px}.wb-due input{background:transparent;color:#bbb;border:0;font:inherit;max-width:145px}
+.wb-task-list button,.wb-project-list li>button:last-child{background:transparent;color:#aaa;flex:none}
+.wb-save-status,.wb-save-error{font-size:11px;margin-top:14px!important;line-height:1.5;color:#aaa}
+.wb-save-error{color:#f1bfa9}.wb-save-error button{font-size:11px;min-height:26px}
+.wb-card-empty{font-size:13px;color:#aaa;line-height:1.7;padding:10px 0 20px}
+.wb-note textarea{resize:vertical;display:block;width:100%;height:180px;min-height:110px;max-height:290px;box-sizing:border-box;background:transparent;border:0;font-family:inherit;font-size:14px;line-height:1.8;color:inherit;padding:0;user-select:text}
+.wb-note textarea:focus-visible{outline:2px solid #c7bbef;outline-offset:4px}
+.wb-undo{font-size:11px!important;margin-top:8px}
+.wb-project-list li>button:first-child{background:transparent;flex:1;min-width:0;text-align:left;justify-content:flex-start;padding:10px 0}
+.wb-project-list span{flex:1;min-width:0}.wb-project-list strong,.wb-project-list small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wb-project-list strong{font-size:13px;font-weight:500}.wb-project-list small{font-size:10px;color:#999;margin-top:4px}
+.wb-project-list svg{flex:none}.wb-project-form{display:grid;gap:9px}.wb-project-form>div{display:flex;gap:8px}
+.wb-track{display:flex;align-items:center;gap:16px;min-width:0;margin:20px 0}
+.wb-album{height:76px;width:76px;border-radius:14px;background:#ffffff0b;display:grid;place-items:center;flex:none;color:#aaa;overflow:hidden}
+.wb-album img{width:100%;height:100%;object-fit:cover}.wb-track>div:last-child{min-width:0}
+.wb-track h3{font-size:17px;line-height:1.4;overflow-wrap:anywhere}.wb-track p{color:#aaa;font-size:12px;line-height:1.6;margin-top:5px;overflow-wrap:anywhere}
+.wb-music-controls{display:flex;justify-content:center;gap:16px}.wb-music-controls button{width:44px;height:44px;border-radius:50%}.wb-music-controls button:nth-child(2){background:#eee;color:#111}
+.widget-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.widget-choices:has(.wb-choice-row){grid-template-columns:1fr;gap:8px}
+.wb-choice-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #ffffff12}.wb-choice-row>div:last-child{display:flex;align-items:center;gap:4px}.wb-choice-row select{max-width:125px;font-size:11px}.wb-choice-row button{background:#222;color:#eee;border:0;border-radius:7px;padding:8px;cursor:pointer}.wb-choice-row button:disabled{opacity:.3;cursor:default}
+.wb-personal-grid>.wb-tasks{order:var(--wb-order-tasks);grid-column:span var(--wb-span-tasks)}
+.wb-personal-grid>.wb-note{order:var(--wb-order-note);grid-column:span var(--wb-span-note)}
+.wb-personal-grid>.wb-projects{order:var(--wb-order-projects);grid-column:span var(--wb-span-projects)}
+.wb-personal-grid>.wb-music{order:var(--wb-order-music);grid-column:span var(--wb-span-music)}
+.wb-personal-grid>.wb-today{order:var(--wb-order-today);grid-column:span var(--wb-span-today)}
+.wb-personal-grid>.wb-calendar{order:var(--wb-order-calendar);grid-column:span var(--wb-span-calendar)}
+.wb-personal-grid>.wb-focus{order:var(--wb-order-focus);grid-column:span var(--wb-span-focus)}
+@media(max-width:1100px){.wb-personal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:740px){.wb-personal-grid{grid-template-columns:1fr}.wb-personal-grid.wb-week-expanded>.wb-calendar{grid-column:1}.wb-personal-grid>.wb-card{grid-column:1;padding:18px}.wb-personal-grid>.wb-calendar{min-height:440px}}
+@media(max-width:420px){.wb-choice-row{align-items:flex-start;flex-direction:column}.wb-choice-row>div:last-child{align-self:flex-end}}

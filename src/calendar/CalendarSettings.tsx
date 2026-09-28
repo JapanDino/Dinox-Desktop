@@ -1,4 +1,5 @@
 import {tr,trError,locale} from '../i18n/core';
+import {tx} from '../desktopText';
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -8,6 +9,7 @@ import { usePersonalSetting } from '../components/PersonalFeatures';
 import {providers, subscriptionUrl, type Provider} from './subscriptions';
 import type { CalendarSource } from './model';
 import './calendar.css';
+import {CalendarAccounts} from './CalendarAccounts';
 export const colors = ['#b7a6ff', '#8dd6b0', '#92bdff', '#efb782', '#ee99b1', '#c3c8d2'];
 export function CalendarSettings() {
     const [sources, setSources] = useState<CalendarSource[]>([]), [name, setName] = useState(''), [url, setUrl] = useState(''), [color, setColor] = useState(colors[0]);
@@ -29,10 +31,11 @@ export function CalendarSettings() {
         setBusy(false);
     } };
     const reset = () => { setName(''); setUrl(''); setEditing(null); setColor(colors[0]); };
-    return <div className="calendar-settings">
+    return <div className="calendar-settings"><CalendarAccounts/>
     <div className="setting-group-label">{tr("Календарь и расписание")}</div>
     <div className="setting-group">
       <div className="cal-connection-intro"><CalendarDays size={22}/><div><strong>{tr("Твоя неделя в Dinox")}</strong><p>{tr("Google, Яндекс, Outlook и другие ICS-подписки. Только просмотр; сохранённые события доступны без интернета.")}</p></div></div>
+      <p className="cal-provider-note">{tx('Подписки по ссылке доступны только для чтения. Если подписка содержит задачи VTODO, они появятся в списке задач. Для Google Tasks и создания записей подключите аккаунт выше.','Link subscriptions are read-only. Included VTODO tasks appear in the task list. Connect an account above for Google Tasks and creating entries.')}</p>
       {sources.map(s => <div className="cal-source-row" key={s.id}>
         <input type="checkbox" aria-label={tr("Показывать {0}", s.name)} checked={s.enabled} disabled={busy} onChange={e => void apply(() => invoke('calendar_save', { id: s.id, name: s.name, color: s.color, enabled: e.target.checked, url: null }))}/>
         <span className="cal-dot" style={{ background: s.color }}/><button className="cal-source-name" onClick={() => { setEditing(s.id); setName(s.name); setColor(s.color); setUrl(''); }}>{s.name}<small>{s.checked ? tr("Проверен {0}", new Date(s.checked * 1000).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) : tr("Ещё не обновлялся")}</small></button>

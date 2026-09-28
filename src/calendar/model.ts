@@ -1,6 +1,12 @@
 import {tr} from '../i18n/core';
 import ICAL from 'ical.js';
 export interface CalendarSource {
+    kind?: 'event'|'task';
+    accountId?: string;
+    collectionId?: string;
+    provider?: string;
+    writable?: boolean;
+    items?: RemoteItem[];
     id: string;
     name: string;
     color: string;
@@ -9,6 +15,9 @@ export interface CalendarSource {
     checked: number;
 }
 export interface CalendarEvent {
+    kind?: 'event'|'task';
+    completed?: boolean;
+    unscheduled?: boolean;
     id: string;
     uid: string;
     sourceId: string;
@@ -23,6 +32,12 @@ export interface CalendarEvent {
     color: string;
     sourceName: string;
 }
+export interface RemoteItem {id:string;title:string;start:string|null;end:string|null;all_day:boolean;task:boolean;completed:boolean;description:string;url:string}
+export function remoteEntries(source:CalendarSource):CalendarEvent[]{return (source.items||[]).map(item=>{
+    const date=(s:string)=>item.all_day?+new Date(s.slice(0,10)+'T00:00:00'):+new Date(s);
+    const start=item.start?date(item.start):0,end=item.end?date(item.end):item.all_day?+addDays(new Date(start),1):start+60000;
+    return {id:`${source.id}:${item.id}`,uid:item.id,sourceId:source.id,title:item.title,start,end,allDay:item.all_day,kind:item.task?'task' as const:'event' as const,completed:item.completed,unscheduled:!item.start,description:item.description,location:'',url:safeLink(item.url),meeting:'',color:source.color,sourceName:source.name};
+}).filter(item=>Number.isFinite(item.start)&&Number.isFinite(item.end));}
 export const dayStart = (value: Date | number) => { const d = new Date(value); d.setHours(0, 0, 0, 0); return d; };
 export const addDays = (date: Date, days: number) => { const d = new Date(date); d.setDate(d.getDate() + days); return d; };
 export const weekStart = (date: Date) => addDays(dayStart(date), -(date.getDay() + 6) % 7);
@@ -48,7 +63,7 @@ function meetingLink(text: string) {
     return '';
 }
 // ICS commonly embeds VTIMEZONE. Use the browser's IANA database when it doesn't.
-function registerIana(id: string) {
+export function registerIana(id: string) {
     if (ICAL.TimezoneService.has(id))
         return;
     const formatter = new Intl.DateTimeFormat('en-US', { timeZone: id, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
@@ -69,6 +84,7 @@ function registerIana(id: string) {
     ICAL.TimezoneService.register(zone);
 }
 export function parseCalendar(source: CalendarSource, from: number, to: number): CalendarEvent[] {
+    if(source.items)return remoteEntries(source).filter(e=>!e.unscheduled&&e.start<to&&e.end>from&&!e.completed);
     const root = new ICAL.Component(ICAL.parse(source.ics.replace(/^\uFEFF/, '')));
     if (root.name !== 'vcalendar')
         throw new Error(tr("\u041E\u0436\u0438\u0434\u0430\u0435\u0442\u0441\u044F \u043A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u044C ICS"));
@@ -103,7 +119,11 @@ export function parseCalendar(source: CalendarSource, from: number, to: number):
     const push = (event: ICAL.Event, start: ICAL.Time, end: ICAL.Time, recurrence: string) => {
         if (String(event.component.getFirstPropertyValue('status')).toUpperCase() === 'CANCELLED')
             return;
-        const s = +start.toJSDate(), e = +end.toJSDate();
+        // Expand task recurrences from their original DTSTART/BYDAY first.
+        // Only then place the occurrence at its DUE deadline.
+        const deadline = source.kind === 'task' && event.component.getFirstPropertyValue('x-dinox-task-deadline') === 'true';
+        const renderedStart = deadline ? end : start;
+        const s = +renderedStart.toJSDate(), e = deadline ? (end.isDate ? +addDays(new Date(s), 1) : s + 60000) : +end.toJSDate();
         if (!Number.isFinite(s) || !Number.isFinite(e) || e <= from || s >= to)
             return;
         const id = `${source.id}:${event.uid}:${recurrence}`;
@@ -112,7 +132,7 @@ export function parseCalendar(source: CalendarSource, from: number, to: number):
         seen.add(id);
         const url = safeLink(event.component.getFirstPropertyValue('url'));
         const description = String(event.description || '').slice(0, 8000), location = String(event.location || '').slice(0, 1000);
-        result.push({ id, uid: event.uid, sourceId: source.id, title: String(event.summary || '').slice(0, 300), start: s, end: Math.max(e, s + 60000), allDay: start.isDate, description, location, url, meeting: meetingLink(`${url} ${location} ${description}`), color: source.color, sourceName: source.name });
+        result.push({ id, uid: event.uid, sourceId: source.id, title: String(event.summary || '').slice(0, 300), start: s, end: Math.max(e, s + 60000), allDay: renderedStart.isDate, description, location, url, meeting: meetingLink(`${url} ${location} ${description}`), color: source.color, sourceName: source.name,kind:source.kind||'event',completed:String(event.component.getFirstPropertyValue('status')).toUpperCase()==='COMPLETED' });
     };
     for (const components of groups.values()) {
         const masters = components.filter(c => !c.hasProperty('recurrence-id')).sort((a, b) => Number(b.getFirstPropertyValue('sequence') || 0) - Number(a.getFirstPropertyValue('sequence') || 0));

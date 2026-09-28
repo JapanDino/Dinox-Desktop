@@ -1,26 +1,33 @@
-# Dinox Desktop 4.1.0
+# Dinox Desktop 4.2.0
 
 ## Что нового
 
-- **Быстрый поиск:** приложения, файлы из индекса Windows, команды, калькулятор и поиск в Google, Яндексе или Bing. Открывается отдельной строкой поверх рабочего стола.
-- **Свой хоткей:** Настройки → Основные → Поиск Dinox. Можно записать сочетание клавиш; занятое сочетание отмечается ошибкой и доступна повторная проверка. Настройки PowerToys и других программ автоматически не меняются.
-- **Микшер:** отдельная громкость и отключение звука приложений, выбор устройства вывода и его громкость.
-- **Редактор рабочего стола:** предпросмотр острова и дока, расположение индикаторов, дата, размеры и видимость. Изменения можно сохранить или отменить.
-- **Календарь:** события на весь день и длительные события отображаются полосами над сеткой часов. Многодневное событие больше не повторяется огромной карточкой в каждом дне. Пересечения распределяются по строкам; дополнительные события можно раскрыть.
-- Исправлены диапазоны дат, исключительная конечная дата событий на весь день и переходящие через границы недели события. Длительные проекты не вытесняют ближайшие встречи из виджета.
-- В режиме месяца убрана мешающая правая полоса прокрутки; колесо над календарной сеткой переключает месяцы без прокрутки всей панели.
+- **Виджеты поверх окон:** полупрозрачное пространство с настраиваемым хоткеем, календарём, задачами, проектами и фокус-таймером.
+- **Заметки:** локальные карточки с форматированием, списками и изображениями; отдельные окна, восстановление черновиков и обработка конфликтов.
+- **Google Calendar + Tasks:** вход через браузер, чтение календарей и задач, создание событий и задач, отметка выполнения. Бесплатный непроверенный Google-пилот ограничен 100 пользователями; предупреждение Google остаётся.
+- **Календарь:** компактное создание записи с раскрытием деталей, текущая временная линия и открытие сетки около текущего времени. Ручная прокрутка сохраняется; «Сегодня» возвращает к текущему времени. Улучшены события на весь день и задачи из поддерживаемых ICS/VTODO.
+- **Остров и уведомления:** стабильнее положение заголовка при раскрытии, ограниченное время показа карточек уведомлений.
+- **Telegram-прокси (эксперимент):** отдельная выключенная по умолчанию функция, собранная из закреплённого исходного кода Flowseal tg-ws-proxy. Локальный слушатель только на 127.0.0.1, секрет защищён Windows DPAPI. Подключение в Telegram — отдельным действием пользователя. Системные настройки сети не меняются.
+- **Новый сайт:** галерея интерфейса, описание подключений и понятные ограничения функций: https://japandino.github.io/Dinox-Desktop/
+
+## Установка и обновление
+
+Скачайте **Dinox-Desktop_4.2.0_x64-setup.exe**. В установленном Dinox: **Настройки → О программе → Проверить обновления**. Автоустановка при запуске включается отдельно. Установщик и манифест обновления подписаны ключом канала Dinox; это не Authenticode-подпись издателя Windows.
+
+Основная платформа — Windows 11 x64. Установщик не меняет настройки Telegram и не запускает прокси автоматически.
+
+## Ограничения
+
+- Google: непроверенный пилот до 100 пользователей. Google Tasks поддерживает срок по дате, но не точное время; интерфейс пока не редактирует и не удаляет события Google.
+- Яндекс и другие ICS-подписки — только чтение. Задачи доступны лишь при наличии в экспорте. Создание записей в Яндексе не включено в публичный интерфейс.
+- Уведомления других приложений требуют идентификации пакета и разрешения Windows. Собственные окна уведомлений Telegram через этот механизм не читаются.
+- Telegram-транспорт зависит от сети. Звонки, медиа и реальное подключение Telegram в этом релизе не подтверждены сквозным тестом. После выхода из Dinox локальный прокси останавливается; при необходимости отключите его в Telegram.
+- Представительных замеров батареи и гарантии совместимости со всеми драйверами/экранами пока нет.
+
+## Проверки
+
+Локально: 37 нативных Rust-тестов прошли; 4 проверки внешних сервисов/Google пропущены. Фронтенд, helper и установщик дополнительно проверяются при сборке релиза. Проверки демоверсий не заменяют проверку установленного приложения на каждом компьютере.
 
 ## English
 
-- Floating search for apps, Windows-indexed filenames, commands, calculations and explicit web searches.
-- Custom search shortcuts with conflict reporting and retry, configured in Settings → General → Dinox search.
-- Per-application audio volume/mute and output-device selection.
-- Desktop layout preview with Save/Cancel for island indicators and dock appearance.
-- All-day and long events rendered as spanning bands above the week timeline, with overlap lanes, continuation markers and expandable overflow.
-- Correct date ranges and month-wheel navigation without scrolling the entire calendar panel.
-
-## Installation and updates
-
-Download **Dinox-Desktop_4.1.0_x64-setup.exe** below. Existing Dinox installations can check for updates in **Settings → About**. Updates are offered by default; automatic installation at startup is optional. The updater verifies a cryptographic signature before installation. This is separate from Windows publisher/Authenticode signing.
-
-Windows 11 x64 is the primary target. Calendar subscriptions remain read-only, including Google and Yandex ICS feeds. File search uses the Windows index. The mixer does not yet route individual apps to different outputs. Notification capture still requires package identity and Windows permission; Telegram's independent custom popups are not Windows notifications. Device compatibility and battery-life measurements remain limited. See the README and [desktop tools guide](https://github.com/JapanDino/Dinox-Desktop/blob/v4.1.0/docs/DESKTOP-TOOLS.md).
+This release adds a fullscreen widget overlay, rich local sticky notes, Google Calendar/Tasks connection and creation, calendar timeline improvements, transient notification behavior, and an optional experimental localhost Telegram transport built from pinned Flowseal sources. Google access remains an unverified 100-user pilot. ICS is read-only. Telegram network availability, calls and media are not guaranteed. See the repository documentation for setup, privacy and recovery instructions.

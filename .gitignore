@@ -48,3 +48,10 @@ skills-lock.json
 /rollback*/
 /.release-stage/
 /packaging/BloomIdentityAssets/
+/.playwright-cli/
+/output/
+*google-oauth*.json
+client_secret*.json
+*.dpapi
+src-tauri/telegram-proxy/dinox-telegram-proxy/
+vendor/tg-ws-proxy/**/__pycache__/

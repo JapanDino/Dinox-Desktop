@@ -1,4 +1,5 @@
 import {desktopMock} from './desktopMocks';
+import {telegramProxyMock} from './telegramProxyMocks';
 import {DesktopDemo} from './DesktopDemo';
 import {WorkspaceDemo} from './WorkspaceDemo';
 import packageInfo from '../package.json';
@@ -24,6 +25,7 @@ function previewRoot(){return (window as any).__BLOOM_PREVIEW_ROOT__??=((window 
 let nextId=1;
 const callbacks=new Map<number,Function>(),listeners=new Map<number,{event:string;handler:number}>();
 const settings:Record<string,string>={'bloom-calendar-view':'week','bloom-language':localStorage.getItem('bloom-language')||'ru',...(JSON.parse(localStorage.getItem('dinox-v4-demo-settings')||'{}'))};
+if(new URLSearchParams(location.search).get('desktop')==='widgets')settings['dinox-widgets-enabled']??='true';
 // Promotional captures use only deterministic, synthetic settings and fixtures.
 if(new URLSearchParams(location.search).has('promo')){
  Object.keys(settings).forEach(key=>delete settings[key]);
@@ -75,13 +77,14 @@ if(new URLSearchParams(location.search).has('spanning-events')){
  ...[0,1,2,3].map(i=>`BEGIN:VEVENT\r\nUID:all-day-${i}\r\nDTSTART;VALUE=DATE:${ds(2)}\r\nDTEND;VALUE=DATE:${ds(4)}\r\nSUMMARY:Событие на весь день ${i+1}\r\nEND:VEVENT`)
  ].join('\r\n'))});
 }
-let sources=fixtures.map(s=>({...s})),offline=false;
+let sources=new URLSearchParams(location.search).has('calendar-empty')?[]:fixtures.map(s=>({...s})),offline=new URLSearchParams(location.search).has('calendar-offline');
 let systemStatus={volume:42 as number|null,muted:false,brightness:65 as number|null,battery:76 as number|null,charging:false,plugged_in:false,language:'RU'};
 let bluetoothEnabled=true;
 let wifiConnected='demo-home';
 let wifiEnabled=true;
 function emit(event:string,payload:unknown){for(const x of listeners.values())if(x.event===event)callbacks.get(x.handler)?.({event,payload});}
 (window as any).__TAURI_INTERNALS__={transformCallback:(fn:Function)=>{const id=nextId++;callbacks.set(id,fn);return id;},invoke:async(command:string,args:any)=>{
+ const proxyResult=await telegramProxyMock(command,args);if(proxyResult)return proxyResult.value;
  const desktopResult=await desktopMock(command,args,settings,emit);if(desktopResult)return desktopResult.value;
  if(command==='keyboard_layout_snapshot')return {target:new URLSearchParams(location.search).has('layout-no-target')?null:'demo-target',target_name:'Untitled — Notepad',layouts:[{id:'ru',label:'RU',name:'Русский',active:systemStatus.language==='RU'},{id:'en',label:'EN',name:'English (US)',active:systemStatus.language==='EN'}]};
  if(command==='keyboard_layout_select'){if(new URLSearchParams(location.search).has('layout-error'))throw 'Приложение не подтвердило смену раскладки. Перейдите в него и попробуйте снова.';systemStatus.language=args.id==='ru'?'RU':'EN';return;}
@@ -163,7 +166,7 @@ function emit(event:string,payload:unknown){for(const x of listeners.values())if
  if(command==='get_volume')return .5;
  if(command==='get_brightness')return 50;
  if(command.startsWith('get_'))return 0;
- if(command==='save_setting'){if(new URLSearchParams(location.search).has('save-error'))throw 'Не удалось сохранить настройку.';document.documentElement.dataset.savedSetting=JSON.stringify(args);settings[args.key]=args.value;localStorage.setItem('dinox-v4-demo-settings',JSON.stringify(settings));emit('settings-changed',args);if(args.key==='dinox-search-shortcut')emit('launcher-shortcut-status',args.value!=='off'&&!new URLSearchParams(location.search).has('shortcut-conflict'));settingsChannel.postMessage(args);return;}
+ if(command==='save_setting'){if(new URLSearchParams(location.search).has('save-error'))throw 'Не удалось сохранить настройку.';document.documentElement.dataset.savedSetting=JSON.stringify(args);settings[args.key]=args.value;localStorage.setItem('dinox-v4-demo-settings',JSON.stringify(settings));emit('settings-changed',args);if(args.key==='dinox-search-shortcut')emit('launcher-shortcut-status',args.value!=='off'&&!new URLSearchParams(location.search).has('shortcut-conflict'));if(args.key==='dinox-widgets-shortcut'||args.key==='dinox-widgets-enabled')emit('widgets-shortcut-status',settings['dinox-widgets-enabled']==='true'&&settings['dinox-widgets-shortcut']!=='off'&&!new URLSearchParams(location.search).has('widget-conflict'));settingsChannel.postMessage(args);return;}
  if(command==='calendar_list')return sources;
  if(command==='calendar_refresh'){if(offline)throw 'Нет подключения к интернету. Сохранённые события доступны.';return {...sources.find(s=>s.id===args.id)!,checked:Date.now()/1000};}
  if(command==='calendar_remove'){sources=sources.filter(s=>s.id!==args.id);emit('calendars-changed',null);return;}

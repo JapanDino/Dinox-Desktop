@@ -13,12 +13,14 @@ Dinox is a community Windows desktop customization app, built with Rust, Tauri a
 | --- | --- |
 | Dock | Pinned and running apps, appearance controls, Windows pin import and attention animations |
 | Island | Time, optional date and indicators, media controls, hover visibility and calendar access |
-| Calendar | Month, week and agenda views; read-only ICS subscriptions, including Google and Yandex calendar feeds |
+| Calendar | Month, week and agenda; read-only ICS including Yandex; optional Google Calendar/Tasks connection, event/task creation and completion |
 | Quick controls | Wi-Fi and Bluetooth panels, sound, brightness, battery, keyboard layout and tray access |
 | Search | Floating launcher, custom keyboard shortcut, apps, Windows-indexed files, calculator and web search |
 | Audio mixer | Per-app volume and mute, output-device selection and volume |
 | Layout editor | Island and dock preview, rearrange indicators, save or cancel changes |
 | Notifications | Optional Windows notification integration, messenger-style cards and privacy controls |
+| Widgets and notes | Hotkey overlay with tasks, projects, focus timer and local rich-text sticky notes |
+| Telegram transport | Optional experimental localhost proxy based on pinned Flowseal sources; disabled by default |
 | Preferences | Russian and English UI, coordinated themes and performance settings |
 
 ## Getting started
@@ -31,12 +33,14 @@ Windows 11 x64 is the primary target. WebView2 is required; the installer can ob
 
 Configure the search shortcut in **Settings → General → Dinox search**. If another app owns the shortcut, Dinox reports the conflict; choose another combination or free it in that app and retry. See the [desktop tools guide](docs/DESKTOP-TOOLS.md).
 
-- Calendar feeds are **read-only**, refreshed on the configured interval; they do not edit Google or Yandex events. Treat private ICS links like passwords.
+- ICS feeds are **read-only**. Optional Google connection supports creation of events/tasks and task completion; this is an unverified 100-user pilot. Google Tasks due times are date-only. Yandex writing is not available. Treat private ICS links like passwords.
 - Wi-Fi enumeration may require Windows location permission. Bluetooth behavior depends on the adapter and device.
 - Capturing other apps' notifications requires a Windows package identity and notification access. A fresh EXE installation alone does not grant this. Existing Bloom Personal notification registration is preserved; no certificate is silently trusted by the installer.
 - Telegram must publish notifications through Windows for the listener to receive them. Dinox cannot capture Telegram's independent custom popup channel or promise every notification contains an avatar.
 - Some Windows-owned surfaces still use system fallbacks. Dinox does not replace Explorer itself.
 - CPU and battery costs vary by settings and hardware. There are no representative measured battery-life claims yet. See [performance](docs/PERFORMANCE.md).
+
+See the [product website](https://japandino.github.io/Dinox-Desktop/), [Google pilot guide](docs/GOOGLE-PILOT.md), [widgets](docs/WIDGETS.md), [notes](docs/STICKY-NOTES.md) and [experimental Telegram transport](docs/TELEGRAM-PROXY.md).
 
 ## Updates
 

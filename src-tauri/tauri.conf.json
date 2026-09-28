@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Dinox Desktop",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "identifier": "com.japandino.bloompersonal",
   "build": {
     "beforeDevCommand": "bun run dev",
@@ -117,6 +117,28 @@
         "focus": true,
         "dragDropEnabled": false,
         "create": false
+      },
+      {
+        "label": "widgets",
+        "title": "Dinox Widgets",
+        "url": "widgets.html",
+        "width": 1040,
+        "height": 720,
+        "minWidth": 360,
+        "minHeight": 360,
+        "decorations": false,
+        "transparent": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "center": true,
+        "shadow": false,
+        "focus": true,
+        "dragDropEnabled": false,
+        "create": false
       }
     ],
     "security": {
@@ -124,6 +146,9 @@
     }
   },
   "bundle": {
+    "resources": {
+      "telegram-proxy/": "telegram-proxy/"
+    },
     "windows": {
       "nsis": {
         "languages": [

@@ -32,6 +32,24 @@ The app reads `https://github.com/JapanDino/Dinox-Desktop/releases/latest/downlo
 
 ## Key handling
 
+Google-enabled releases also require the Actions secrets `DINOX_GOOGLE_CLIENT_ID`
+and `DINOX_GOOGLE_CLIENT_SECRET` from the publisher's Google OAuth Desktop app.
+The release workflow checks that these are present and passes them to the native
+build. Never put credential JSON files in Git or Vite environment variables.
+For local builds, dot-source `scripts/load-google-oauth.ps1`; it loads credentials
+from the publisher's private local directory into that build process only.
+Configuring these secrets does not publish or verify the Google OAuth app.
+
+The public pilot uses `DINOX_GOOGLE_ACCESS_MODE=unverified` (Actions repository
+variable; also the local publisher loader default). This controls explanatory UI
+only, not Google's permissions or user limit. Set `testing` for a separate testing
+project; use `verified` only after Google approves the requested scopes.
+
+Desktop OAuth client credentials are embedded in the native executable and cannot
+be kept confidential from its users. PKCE protects authorization-code exchange;
+account access/refresh tokens must remain in the local DPAPI-protected store.
+Do not substitute a web/server OAuth client or ship a service-account key.
+
 Use the original signing key for every release. Back it up securely outside Git. The public key is embedded in `src-tauri/tauri.conf.json`; only the private key belongs in the Actions secret. A key change requires a planned trust migration. This signing is separate from optional Windows Authenticode signing.
 
 ## Verification
