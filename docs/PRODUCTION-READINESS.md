@@ -32,7 +32,7 @@ records. This tested native provider code, not the installed UI or updater.
 
 The release workflow now supplies Google publisher configuration and refuses to
 build a release without it. The corresponding GitHub Actions secrets have been
-configured; the amended workflow has not yet run remotely.
+configured. The amended workflow passed for v4.2.0 on September 28, 2026: https://github.com/JapanDino/Dinox-Desktop/actions/runs/36429979722 . The published installer was downloaded and independently verified against the embedded updater public key; its SHA-256 and manifest checksums matched, and a modified copy was rejected. This does not establish installed UI or hardware compatibility.
 
 OAuth errors distinguish a revoked grant, incomplete consent, publisher
 configuration failures, rate limits and temporary service failures. Cached
@@ -69,3 +69,4 @@ purchased, and no public Google approval is claimed.
 - [Google homepage requirements](https://support.google.com/cloud/answer/13807376?hl=en)
 - [Google token expiration](https://developers.google.com/identity/protocols/oauth2#expiration)
 - [Sensitive-scope verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/sensitive-scope-verification)
+
