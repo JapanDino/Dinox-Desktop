@@ -91,20 +91,35 @@ pub async fn launcher_files(query:String)->Result<Vec<FileResult>,String>{
 }
 #[tauri::command]
 pub async fn launcher_show(app:tauri::AppHandle)->Result<(),String>{
+ let _operation=crate::diagnostics::Operation::start("show search");
+ let failure=|stage:&str,error:&dyn std::fmt::Display|{let message=format!("Search {stage}: {error}");crate::diagnostics::record(&message);message};
  let win=match app.get_webview_window("launcher"){
-  Some(win)=>win,
-  None=>{let config=app.config().app.windows.iter().find(|c|c.label=="launcher").ok_or("Search configuration unavailable")?;tauri::WebviewWindowBuilder::from_config(&app,config).map_err(|e|e.to_string())?.build().map_err(|e|e.to_string())?}
+  Some(win)=>{crate::diagnostics::record("Search reusing existing window");win},
+  None=>{
+   crate::diagnostics::record("Search lazy window creation requested");
+   let config=app.config().app.windows.iter().find(|c|c.label=="launcher").ok_or_else(||failure("configuration missing",&"launcher"))?;
+   let win=tauri::WebviewWindowBuilder::from_config(&app,config).map_err(|e|failure("window configuration failed",&e))?.build().map_err(|e|failure("window creation failed",&e))?;
+   crate::diagnostics::record("Search lazy window created");win
+  }
  };
- win.center().map_err(|e|e.to_string())?;
- win.show().map_err(|e|e.to_string())?;
- win.set_focus().map_err(|e|e.to_string())?;
- let _=win.emit("launcher-open",());
+ win.center().map_err(|e|failure("centering failed",&e))?;
+ win.show().map_err(|e|failure("show failed",&e))?;
+ win.set_focus().map_err(|e|failure("focus failed",&e))?;
+ if let Err(error)=win.emit("launcher-open",()){crate::diagnostics::record(&format!("Search open event failed: {error}"));}
+ crate::diagnostics::record("Search show and focus requested successfully");
  Ok(())
 }
 pub fn toggle(app:&tauri::AppHandle){
+ crate::diagnostics::record("Search WM_HOTKEY received; dispatching toggle");
  let app=app.clone();
  // Called from a Win32 message callback: defer all Wry window operations.
- tauri::async_runtime::spawn(async move{if let Some(win)=app.get_webview_window("launcher"){if win.is_visible().unwrap_or(false){GENERATION.fetch_add(1,Ordering::SeqCst);let _=win.hide();return;}}let _=launcher_show(app).await;});
+ tauri::async_runtime::spawn(async move{
+  if let Some(win)=app.get_webview_window("launcher"){
+   let visible=match win.is_visible(){Ok(value)=>value,Err(error)=>{crate::diagnostics::record(&format!("Search visibility check failed: {error}"));false}};
+   if visible{GENERATION.fetch_add(1,Ordering::SeqCst);if let Err(error)=win.hide(){crate::diagnostics::record(&format!("Search hotkey hide failed: {error}"));}else{crate::diagnostics::record("Search hidden by hotkey");}return;}
+  }
+  if let Err(error)=launcher_show(app).await{crate::diagnostics::record(&format!("Search hotkey open failed: {error}"));}
+ });
 }
 #[tauri::command]
 pub async fn launcher_open(app:tauri::AppHandle,kind:String,target:String,engine:Option<String>)->Result<(),String>{

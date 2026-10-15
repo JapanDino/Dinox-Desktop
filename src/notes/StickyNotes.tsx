@@ -4,6 +4,7 @@ import {StickyNote as NoteIcon,Plus,Search,X,Trash2,ArrowLeft,CheckSquare,Pin,Ro
 import {invoke} from '@tauri-apps/api/core';
 import {tx} from '../desktopText';
 import {locale} from '../i18n/core';
+import {useBloomAppearance} from '../appearance/BloomAppearance';
 import {newNote,noteName,noteColors,documentText,filterNotes,type StickyNote} from './model';
 import {useNotes,saveNote,retryNotes,resolveAsCopy,deletePermanently,waitForNotes} from './store';
 import './notes.css';
@@ -18,8 +19,8 @@ export function StickyNotesWidget(){
   const recent=filterNotes(state.notes,'');
   const show=(id:string|null)=>{setInitial(id);setOpen(true);};
   return <article className="wb-card wb-note dn-widget"><header><h2><NoteIcon size={17}/>{tx('Заметки','Notes')}</h2><div><button aria-label={tx('Все заметки','All notes')} onClick={()=>show(recent[0]?.id??null)}><Maximize2 size={16}/></button><button aria-label={tx('Новая заметка','New note')} disabled={!state.loaded} onClick={()=>show(create())}><Plus size={18}/></button></div></header>
-    {!state.loaded?<p>{tx('Загрузка заметок…','Loading notes…')}</p>:recent.length?<div className="dn-widget-list">{recent.slice(0,4).map(note=><button key={note.id} style={{'--note-color':noteColors[note.color]} as CSSProperties} onClick={()=>show(note.id)}><strong>{note.pinned&&<Pin size={12}/>} {name(note)}</strong><span>{documentText(note.doc).slice(0,130)||tx('Пустая заметка','Empty note')}</span></button>)}</div>:<div className="dn-widget-empty"><p>{tx('Мысли, списки и изображения — в отдельных стикерах.','Ideas, lists and images — on individual sticky notes.')}</p><button onClick={()=>show(create())}>{tx('Создать первую заметку','Create your first note')}</button></div>}
-    <button className="dn-widget-more" onClick={()=>show(recent[0]?.id??null)}>{tx('Открыть библиотеку','Open library')} · {recent.length}</button><StoreStatus/>
+    {!state.loaded?<p>{tx('Загрузка заметок…','Loading notes…')}</p>:recent.length?<div className="dn-widget-list">{recent.slice(0,4).map(note=><button key={note.id} style={{'--note-color':noteColors[note.color]} as CSSProperties} onClick={()=>show(note.id)}><strong>{note.pinned&&<Pin size={12}/>} {name(note)}</strong><span>{documentText(note.doc).slice(0,130)||tx('Пустая заметка','Empty note')}</span></button>)}</div>:<div className="dn-widget-empty"><button onClick={()=>show(create())}>{tx('Создать заметку','Create note')}</button></div>}
+    {recent.length>4&&<button className="dn-widget-more" onClick={()=>show(recent[0]?.id??null)}>{tx('Все заметки','All notes')} · {recent.length}</button>}<StoreStatus/>
     {open&&createPortal(<NotesLibrary initial={initial} onClose={()=>setOpen(false)}/>,document.body)}
   </article>;
 }
@@ -27,9 +28,13 @@ export function StickyNotesWidget(){
 export function NotesLibrary({initial,onClose}:{initial:string|null;onClose:()=>void}){
   const state=useNotes(),[active,setActive]=useState<string|null>(initial),[query,setQuery]=useState(''),[trash,setTrash]=useState(false),[color,setColor]=useState('all'),[multi,setMulti]=useState(false),[selected,setSelected]=useState<string[]>([]),[limit,setLimit]=useState(60),[confirm,setConfirm]=useState(false),[error,setError]=useState(''),[lastDeleted,setLastDeleted]=useState<string[]>([]);
   const root=useRef<HTMLDivElement>(null),search=useRef<HTMLInputElement>(null),previous=useRef(document.activeElement as HTMLElement|null);
+  const previousActive=useRef(active);
   const notes=filterNotes(state.notes,query,trash,color),chosen=state.notes.find(n=>n.id===active&&Boolean(n.deletedAt)===trash);
   const close=async()=>{try{await waitForNotes();onClose();}catch{setError(tx('Сначала сохраните изменения или скачайте резервную копию.','Save your changes or download a backup first.'));}};
   useEffect(()=>{root.current?.querySelector<HTMLButtonElement>('.dn-close')?.focus();return()=>{previous.current?.focus();};},[]);
+  // Returning from an editor must keep focus inside the library, including on
+  // small screens where the editor and list are separate views.
+  useEffect(()=>{if(previousActive.current&&!active)search.current?.focus();previousActive.current=active;},[active]);
   useEffect(()=>{setLimit(60);setSelected([]);setConfirm(false);},[query,trash,color]);
   const remove=(ids:string[])=>{setError('');const now=Date.now();state.notes.filter(n=>ids.includes(n.id)).forEach(n=>saveNote({...n,deletedAt:now}));setLastDeleted(ids);setActive(null);setSelected([]);};
   const restore=(ids:string[])=>{state.notes.filter(n=>ids.includes(n.id)).forEach(n=>saveNote({...n,deletedAt:null}));setSelected([]);setLastDeleted([]);};
@@ -60,6 +65,7 @@ export function NotesLibrary({initial,onClose}:{initial:string|null;onClose:()=>
 }
 
 export function StickyWindow({id,onClose}:{id:string;onClose:()=>void}){
+  useBloomAppearance();
   const state=useNotes(),note=state.notes.find(n=>n.id===id),[error,setError]=useState(''),[top,setTop]=useState(false);
   return <div className="dn-notes dn-popout" onKeyDown={e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();onClose();}}}><header className="dn-popout-header" data-tauri-drag-region><span data-tauri-drag-region>dinox · {tx('Заметка','Note')}</span><div><button aria-label={tx('Поверх других окон','Keep above other windows')} aria-pressed={top} onClick={()=>{void invoke('notes_set_top',{top:!top}).then(()=>setTop(v=>!v)).catch(()=>setError(tx('Не удалось изменить закрепление окна.','Could not change window pinning.')));}}><Pin size={16}/></button><button aria-label={tx('Закрыть заметку','Close note')} onClick={onClose}><X size={18}/></button></div></header><StoreStatus/>{error&&<p role="alert">{error}</p>}{state.error==='conflict'&&<button onClick={()=>{const copy=resolveAsCopy(id);if(copy)void waitForNotes(copy.id).then(()=>invoke('notes_open_window',{id:copy.id})).catch(()=>setError(tx('Не удалось открыть копию.','Could not open copy.')));}}>{tx('Сохранить отдельную копию','Save as a separate copy')}</button>}{note?<Suspense fallback={<p>{tx('Загрузка…','Loading…')}</p>}><Editor note={note} onOpenCopy={copy=>{void waitForNotes(copy).then(()=>invoke('notes_open_window',{id:copy})).catch(()=>setError(tx('Не удалось открыть копию.','Could not open the copy.')));}} onDelete={()=>saveNote({...note,deletedAt:Date.now()})}/>{note.deletedAt&&<button onClick={()=>saveNote({...note,deletedAt:null})}>{tx('Восстановить заметку','Restore note')}</button>}</Suspense>:<p className="dn-empty">{state.loaded?tx('Заметка удалена','Note was deleted'):tx('Загрузка…','Loading…')}</p>}</div>;
 }

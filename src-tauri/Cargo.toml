@@ -1,6 +1,6 @@
 [package]
 name = "bloom"
-version = "4.2.0"
+version = "4.3.0"
 description = "Dinox desktop shell for Windows 11"
 authors = ["JapanDino", "sehaz (original Bloom)"]
 edition = "2021"
@@ -58,6 +58,7 @@ windows = { version = "0.61", features = [
   "Devices_Bluetooth",
   "Devices_Enumeration",
   "System_Power",
+  "Win32_System_Power",
   "ApplicationModel",
   "UI_Notifications",
   "UI_Notifications_Management",

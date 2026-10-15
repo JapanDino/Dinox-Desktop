@@ -3,22 +3,26 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, emit } from '@tauri-apps/api/event';
 import { usePersonalSetting } from '../components/PersonalFeatures';
-import { freshNotices, isQuiet, noticeKey, notificationDefaults, parseNotificationOptions, type Notice } from './model';
+import { freshNotices, automaticNoticeAllowed, noticeKey, notificationDefaults, parseNotificationOptions, type Notice } from './model';
 import {popup,livePopups,resumePopups,type Popup} from './lifetime';
-export function useNotifications() {
+export function useNotifications(dnd = false) {
+    const dndRef = useRef(dnd); dndRef.current = dnd;
+    const [, reviseReadState] = useState(0);
     const [raw] = usePersonalSetting('bloom-notifications', JSON.stringify(notificationDefaults));
     const options = parseNotificationOptions(raw), optionsRef = useRef(options);
     optionsRef.current = options;
     const [history, setHistory] = useState<Notice[]>([]), [popups, setPopups] = useState<Popup[]>([]), [center, setCenter] = useState(false), [error, setError] = useState('');
     const previous = useRef<Notice[] | null>(null), read = useRef(new Set<string>()), hidden = useRef(new Set<string>()), paused = useRef(0), current = useRef(history);
     current.current = history;
+    const centerRef = useRef(center); centerRef.current = center;
+    useEffect(() => { if (dnd) { paused.current = 0; setPopups([]); } }, [dnd]);
     const allowed = (n: Notice) => !options.blocked.includes(n.app_id);
     const unread = history.filter(n => allowed(n) && !read.current.has(noticeKey(n))).length;
     useEffect(() => { void emit('bloom-notification-count', options.enabled ? unread : 0); }, [unread, options.enabled]);
     useEffect(() => {
         const open = listen('bloom-open-notifications', () => { paused.current=0;setCenter(true); setPopups([]); });
         const count = listen('notification-count-request', () => { void emit('bloom-notification-count', optionsRef.current.enabled ? current.current.filter(n => !optionsRef.current.blocked.includes(n.app_id) && !read.current.has(noticeKey(n))).length : 0); });
-        const preview = listen<Notice>('bloom-preview-notification', ({ payload }) => { if (optionsRef.current.enabled) {
+        const preview = listen<Notice>('bloom-preview-notification', ({ payload }) => { if (automaticNoticeAllowed(optionsRef.current, dndRef.current)) {
             paused.current=0;setPopups([popup(payload,optionsRef.current.duration)]); } });
         return () => { for (const stop of [open, count, preview])
             void stop.then(f => f()); };
@@ -51,7 +55,7 @@ export function useNotifications() {
                 const news = fresh.filter(n => !cfg.blocked.includes(n.app_id) && (knownKeys.has(noticeKey(n)) || Date.now() - n.created < 120000));
                 void emit('bloom-notification-health',{checked:Date.now(),count:next.length,last:next[0]?.created||null,telegram:next.some(n=>/telegram/i.test(n.app_name))});
                 for(const notice of news){read.current.delete(noticeKey(notice));hidden.current.delete(noticeKey(notice));}
-                if (news.length && !isQuiet(cfg)) {
+                if (news.length && automaticNoticeAllowed(cfg, dndRef.current) && !centerRef.current) {
                     for(const notice of news)void emit('bloom-app-notice',{app_id:notice.app_id,app_name:notice.app_name});
                     setPopups(old => [...news.map(notice => popup(notice,cfg.duration)), ...livePopups(old,Date.now(),!!paused.current).filter(p=>!news.some(n=>noticeKey(n)===noticeKey(p.notice)))].slice(0, cfg.maxVisible));
                 }
@@ -88,10 +92,25 @@ export function useNotifications() {
     window.addEventListener('blur',release);document.addEventListener('visibilitychange',release);
     return()=>{clearInterval(timer);window.removeEventListener('blur',release);document.removeEventListener('visibilitychange',release);};
     }, [popups.length]);
-    const close = () => { paused.current = 0; history.forEach(n => read.current.add(noticeKey(n))); setCenter(false); setPopups([]); };
-    return { options, history: history.filter(n => allowed(n) && !hidden.current.has(noticeKey(n))), popups, center, error, unread, visible: center || popups.length > 0, close,
+    const markRead = (notice: Notice) => {
+        const key = noticeKey(notice);
+        if (!read.current.has(key)) { read.current.add(key); reviseReadState(value => value + 1); }
+    };
+    const hideBanner = (notice: Notice) => {
+        markRead(notice);
+        setPopups(old => old.filter(item => noticeKey(item.notice) !== noticeKey(notice)));
+    };
+    const close = () => {
+        paused.current = 0;
+        // Closing history is navigation, not "read every unseen item".
+        if (!center) popups.forEach(item => markRead(item.notice));
+        centerRef.current=false;
+        setCenter(false); setPopups([]);
+    };
+    return { options, dnd, history: history.filter(n => allowed(n) && !hidden.current.has(noticeKey(n))), popups, center, error, unread, visible: center || (!dnd && popups.length > 0), close, markRead, markVisibleRead:(notice:Notice)=>{if(centerRef.current)markRead(notice);}, hideBanner,
         showCenter: () => { paused.current=0;setCenter(true); setPopups([]); },
-        dismiss: (notice: Notice) => { hidden.current.add(noticeKey(notice)); read.current.add(noticeKey(notice)); setPopups(old => old.filter(x => noticeKey(x.notice) !== noticeKey(notice))); },
+        // Local Dinox history only. The Windows notification remains unchanged.
+        dismiss: (notice: Notice) => { hidden.current.add(noticeKey(notice)); markRead(notice); setPopups(old => old.filter(x => noticeKey(x.notice) !== noticeKey(notice))); reviseReadState(value => value + 1); },
         pause: (value: boolean) => { if (value) {
             if (!paused.current)
                 paused.current = Date.now();

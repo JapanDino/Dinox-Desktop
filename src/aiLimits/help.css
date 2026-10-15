@@ -1,0 +1,5 @@
+.ai-limits-help{font:12px/1.55 var(--dn-font,'Segoe UI',sans-serif);color:var(--dn-muted);margin-top:10px}
+.ai-limits-help summary{cursor:pointer;padding:6px 0;color:var(--dn-muted);width:fit-content}
+.ai-limits-help summary:hover{color:var(--dn-text)}.ai-limits-help summary:focus-visible{outline:2px solid var(--dn-focus);outline-offset:2px;border-radius:4px}
+.ai-limits-help p{margin:6px 0 10px;max-width:68ch;overflow-wrap:anywhere}
+.ai-limits-setup{margin:0 16px;padding:0 0 12px}

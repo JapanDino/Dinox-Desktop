@@ -779,11 +779,19 @@ body {
   background: var(--bloom-group-bg);
 }
 
-.dock-toast {
+.dock-toast-anchor {
   position: fixed;
   bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 12px;
+  right: 12px;
+  display:flex;
+  justify-content:center;
+  pointer-events:none;
+  z-index:10001;
+}
+.dock-toast {
+  box-sizing:border-box;
+  max-width:100%;
   background: rgba(40, 40, 40, 0.95);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -795,9 +803,72 @@ body {
   font-family: inherit;
   z-index: 10001;
   pointer-events: none;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap:anywhere;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 .dock-icon[role=button]:focus-visible{outline:2px solid var(--dock-accent,#fff);outline-offset:4px;border-radius:var(--dock-icon-radius,12px)}
 
 .dock-search-button{width:var(--dock-size);height:var(--dock-size);flex-shrink:0;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--dock-text);border:0;border-radius:var(--dock-icon-radius);cursor:pointer}.dock-search-button:hover{background:#ffffff15}.dock-search-button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.dock-container.dock-vertical .dock,.dock-vertical .dock-reorder-container,.dock-vertical .dock-reorder-group{flex-direction:column}.dock-personal.dock-vertical .dock{margin-bottom:0;max-width:calc(var(--dock-size) + 2 * var(--dock-padding) + 2px)}.dock-edge-left .dock{margin-left:var(--dock-offset)}.dock-edge-right .dock{margin-right:var(--dock-offset)}.dock-vertical .dock-divider{width:calc(var(--dock-size) * .65);height:1px;margin:2px 0}.dock-vertical .system-strip{flex-direction:column;gap:4px;height:auto;width:var(--dock-size)}.dock-vertical .system-strip button{width:var(--dock-size);height:var(--dock-size);min-height:var(--dock-size);flex:none}.dock-vertical .system-strip .system-quick{padding:0}.dock-vertical .system-quick>svg:not(:first-child),.dock-vertical .system-quick .system-battery{display:none}.dock-vertical .dock-page-button svg{transform:rotate(90deg)}.dock-vertical.with-labels .dock{padding-bottom:var(--dock-padding)}.dock-vertical .dock-label{display:none}.dock-edge-left .tooltip{left:calc(100% + 12px);top:50%;transform:translateY(-50%)!important}.dock-edge-right .tooltip{left:auto;right:calc(100% + 12px);top:50%;transform:translateY(-50%)!important}.dock-edge-left .preview-tooltip{bottom:auto;left:calc(100% + 18px);top:50%;transform:translateY(-50%)!important}.dock-edge-right .preview-tooltip{bottom:auto;left:auto;right:calc(100% + 18px);top:50%;transform:translateY(-50%)!important}.dock-vertical .active-indicator{bottom:auto!important;left:-5px;top:50%;transform:translateY(-50%)}.dock-edge-right .active-indicator{left:auto;right:-5px}.preview-item[role=button]:focus-visible{outline:2px solid var(--dock-accent,#fff);outline-offset:2px}.context-menu{max-width:calc(100vw - 16px);max-height:calc(100vh - 16px);overflow-y:auto;box-sizing:border-box}.context-menu button.menu-item{display:flex;width:100%;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}.context-menu button.menu-item:disabled{opacity:.4}.context-menu button.menu-item:focus-visible{outline:2px solid var(--dock-accent,#fff);outline-offset:-2px}.dock-pin-backdrop{position:absolute;inset:0;z-index:1500;display:grid;place-items:center;background:#0004;padding:12px;box-sizing:border-box}.dock-pin-manager{width:min(520px,100%);max-height:calc(100vh - 24px);overflow:auto;background:var(--bloom-bg-expanded,#080808);color:var(--bloom-text,#eee);border:1px solid var(--bloom-border,#333);border-radius:20px;box-sizing:border-box;box-shadow:0 24px 80px #0007;scrollbar-width:thin}.dock-pin-manager>header{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:12px 18px;background:inherit;border-bottom:1px solid var(--bloom-border,#222)}.dock-pin-manager>header button{display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:10px;background:var(--bloom-group-bg,#191919);color:inherit;cursor:pointer}.dock-pin-manager>header button:focus-visible{outline:2px solid var(--dock-accent,#fff)}.dock-pin-manager .setting-group{border:0;background:transparent}.dock-pin-manager .dock-content-heading{padding-top:16px}
+.context-menu .has-submenu:focus-within .submenu{display:block;position:static;width:auto;left:auto;bottom:auto;box-shadow:none;background:transparent;margin-top:6px}.context-menu .has-submenu:focus-visible{outline:2px solid var(--dock-accent,#fff)}.preview-tooltip{max-width:calc(100vw - 24px);max-height:calc(100vh - 24px);overflow:auto}.dock-pin-manager .dock-pin-list{max-height:260px}
+.dock-personal .context-menu .menu-item:hover,.dock-personal .context-menu .has-submenu:hover,.dock-personal .context-menu .submenu .menu-item:hover{background:var(--bloom-group-bg,#242424)}.context-menu .has-submenu{flex-wrap:wrap}.context-menu .has-submenu .submenu{position:static;flex-basis:100%;min-width:0;left:auto;bottom:auto;box-shadow:none;background:transparent;padding:6px 0 0;border:0}.context-menu .submenu::before{display:none}.dock-personal .context-menu .menu-item.quit:hover{background:color-mix(in srgb,#dd7777 18%,transparent)}
+
+/* Shared shell treatment; application icons supply decorative colour. */
+html[data-bloom-unified=true] .dock-container {
+ font-family:var(--dn-font,"Segoe UI Variable","Segoe UI",sans-serif);
+}
+html[data-bloom-unified=true] :is(.context-menu,.submenu,.dock-pin-manager) {
+ background:var(--bloom-bg-expanded,#101012);
+ border-color:var(--bloom-border,#ffffff20);
+ color:var(--bloom-text,#f4f4f5);
+ backdrop-filter:none;-webkit-backdrop-filter:none;
+ font-family:var(--dn-font,"Segoe UI Variable","Segoe UI",sans-serif);
+ box-shadow:0 12px 32px #0004;
+}
+html[data-bloom-unified=true] :is(.context-menu,.submenu) {border-radius:12px;}
+html[data-bloom-unified=true] .menu-item {
+ border-radius:8px;font-size:13px;font-weight:400;line-height:1.4;
+ transition:background-color 120ms ease;
+}
+html[data-bloom-unified=true] .context-menu .menu-item:hover,
+html[data-bloom-unified=true] .context-menu .submenu .menu-item:hover {
+ background:var(--bloom-hover-bg,#ffffff12);
+}
+html[data-bloom-unified=true] .context-menu .menu-item.quit:hover {
+ color:var(--dn-error,#f29191);background:color-mix(in srgb,var(--dn-error,#f29191) 12%,transparent);
+}
+html[data-bloom-unified=true] .dock-search-button:hover {
+ background:color-mix(in srgb,var(--dock-text) 8%,transparent);
+}
+html[data-bloom-unified=true] .preview-item {transition:background-color 120ms ease;}
+html[data-bloom-unified=true] .preview-item:active {transform:none;}
+html[data-bloom-unified=true] .preview-label {color:var(--bloom-text,#f4f4f5);font-size:12px;}
+html[data-bloom-unified=true] .preview-close-btn {
+ border-radius:8px;background:var(--bloom-group-bg,#1a1a1e);
+ color:var(--bloom-text,#f4f4f5);box-shadow:0 0 0 1px var(--bloom-border,#ffffff20);
+}
+html[data-bloom-unified=true] .preview-close-btn:hover {
+ background:var(--bloom-hover-bg,#ffffff12);box-shadow:0 0 0 1px var(--dn-error,#f29191);
+ color:var(--dn-error,#f29191);transform:none;
+}
+.preview-item:focus-within .preview-close-btn {opacity:1;}
+.preview-close-btn:focus-visible {opacity:1;outline:2px solid var(--dock-accent,#fff);outline-offset:2px;}
+html[data-bloom-unified=true] .dock-pin-manager {border-radius:18px;}
+html[data-bloom-unified=true] .dock-pin-manager>header {
+ padding:12px 16px;border-bottom-color:var(--bloom-border,#ffffff20);
+}
+html[data-bloom-unified=true] .dock-pin-manager>header button {
+ border-radius:8px;background:transparent;
+}
+html[data-bloom-unified=true] .dock-pin-manager>header button:hover {background:var(--bloom-hover-bg,#ffffff12);}
+html[data-bloom-unified=true] .dock-toast {
+ background:var(--bloom-bg-expanded,#101012);border-color:var(--bloom-border,#ffffff20);
+ color:var(--dn-error,#f29191);backdrop-filter:none;line-height:1.5;
+}
+@media(prefers-reduced-motion:reduce){
+ html[data-bloom-unified=true] :is(.dock,.tooltip,.menu-item,.preview-item,.preview-close-btn,.popup-app-row,.popup-app-pin){transition:none;}
+}
+.dock [data-file-drag-target=true]{outline:2px solid var(--dock-accent);outline-offset:3px;border-radius:var(--dock-icon-radius,10px);}
+.dock-personal.hover-magnify:not(.file-drag) .dock-icon { scale:var(--dock-magnify,1); transition:scale .12s ease-out; transform-origin:center; }
+@media(prefers-reduced-motion:reduce){.dock-personal.hover-magnify .dock-icon{scale:1!important;transition:none!important}}

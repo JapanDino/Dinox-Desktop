@@ -49,7 +49,7 @@ export function usePersonalSetting(key: string, fallback: string) {
     };
     return [value, save] as const;
 }
-export function PersonalActions() {
+export function PersonalActions({onAction}:{onAction?:(action:Action)=>void}={}) {
     const [profile] = usePersonalSetting('bloom-personal-profile', 'work');
     const [left] = usePersonalSetting(`bloom-${profile}-action-1`, profile === 'relax' ? 'sound' : 'notifications');
     const [right] = usePersonalSetting(`bloom-${profile}-action-2`, profile === 'study' ? 'battery' : 'settings');
@@ -60,6 +60,7 @@ export function PersonalActions() {
             return command && <button key={i} title={label} onClick={e => {
                     e.stopPropagation();
                     setError('');
+                    if(onAction){onAction(id);return;}
                     invoke(command).catch(() => setError(tr("Не удалось открыть действие")));
                 }}><Icon size={14}/><span>{tr(label)}</span></button>;
         })}
@@ -83,7 +84,7 @@ export function PersonalSettings() {
     const [bounce, save] = usePersonalSetting('bloom-personal-attention', 'true');
     const [error, setError] = useState('');
     return <>
-    <div className="setting-group-label">Bloom Personal</div>
+    <div className="setting-group-label">Dinox Personal</div>
     <div className="setting-group">
       <ProfilePicker />
       <PersonalOptions />

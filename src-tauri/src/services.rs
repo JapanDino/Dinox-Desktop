@@ -4,12 +4,11 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager};
 use windows::Win32::Foundation::{HWND, LPARAM, WPARAM};
 use windows::core::BOOL;
-use windows::Win32::UI::WindowsAndMessaging::{GetWindowThreadProcessId, IsWindowVisible, GetWindowLongW, GWL_EXSTYLE, WS_EX_TOOLWINDOW, WH_MOUSE_LL, MSLLHOOKSTRUCT, WM_MOUSEMOVE, SetWindowsHookExW, CallNextHookEx};
+use windows::Win32::UI::WindowsAndMessaging::{GetWindowThreadProcessId, IsWindowVisible, GetWindowLongW, GWL_EXSTYLE, WS_EX_TOOLWINDOW, WH_MOUSE_LL, MSLLHOOKSTRUCT, WM_MOUSEMOVE, WM_LBUTTONUP, WM_RBUTTONUP, SetWindowsHookExW, CallNextHookEx};
 use windows::Win32::Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_EXTENDED_FRAME_BOUNDS};
 use windows::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_NAME_WIN32};
 use windows::Win32::Foundation::CloseHandle;
 use std::path::Path;
-use wmi::{COMLibrary, WMIConnection};
 
 pub fn setup_keyboard_hook() -> windows::Win32::UI::WindowsAndMessaging::HHOOK {
     unsafe { windows::Win32::UI::WindowsAndMessaging::SetWindowsHookExA(windows::Win32::UI::WindowsAndMessaging::WH_KEYBOARD_LL, Some(keyboard_hook_proc), None, 0).expect("Failed") }
@@ -659,18 +658,18 @@ pub fn setup_system_worker(app_handle: AppHandle) -> Sender<SystemCommand> {
                             }
                             SystemCommand::BrightnessUp => {
                                 let new_val = (CURRENT_BRIGHTNESS.load(Ordering::Relaxed) + 10).min(100);
-                                CURRENT_BRIGHTNESS.store(new_val, Ordering::Relaxed);
-                                LAST_BRIGHTNESS_CHANGE.store(get_now_ms(), Ordering::Relaxed);
-                                let _ = handle_system.emit("brightness-change", BrightnessChangeEvent { brightness: new_val });
+
+
+
                                 if let Some(tx) = BRIGHTNESS_SENDER.get() { let _ = tx.send(new_val); }
                                 hide_osd();
                             }
                             SystemCommand::BrightnessDown => {
                                 let current = CURRENT_BRIGHTNESS.load(Ordering::Relaxed);
                                 let new_val = current.saturating_sub(10);
-                                CURRENT_BRIGHTNESS.store(new_val, Ordering::Relaxed);
-                                LAST_BRIGHTNESS_CHANGE.store(get_now_ms(), Ordering::Relaxed);
-                                let _ = handle_system.emit("brightness-change", BrightnessChangeEvent { brightness: new_val });
+
+
+
                                 if let Some(tx) = BRIGHTNESS_SENDER.get() { let _ = tx.send(new_val); }
                                 hide_osd();
                             }
@@ -780,27 +779,6 @@ pub fn setup_system_worker(app_handle: AppHandle) -> Sender<SystemCommand> {
                 }
                 std::thread::sleep(std::time::Duration::from_millis(64));
             }
-        }
-    });
-
-    let handle_brightness = app_handle.clone();
-    std::thread::spawn(move || {
-        let com_lib = match COMLibrary::new() { Ok(lib) => lib, Err(_) => return };
-        let wmi_con = match WMIConnection::with_namespace_path("root\\WMI", com_lib) { Ok(con) => con, Err(_) => return };
-        let initial = wmi_con.query::<WmiMonitorBrightness>().ok().and_then(|res| res.first().map(|b| b.current_brightness as u32));
-        BRIGHTNESS_AVAILABLE.store(initial.is_some(), Ordering::Relaxed);
-        let mut last_brightness = initial.unwrap_or(50);
-        CURRENT_BRIGHTNESS.store(last_brightness, Ordering::Relaxed);
-        loop {
-            if get_now_ms() - LAST_BRIGHTNESS_CHANGE.load(Ordering::Relaxed) < 2000 { std::thread::sleep(std::time::Duration::from_millis(500)); continue; }
-            if let Ok(results) = wmi_con.query::<WmiMonitorBrightness>() {
-                BRIGHTNESS_AVAILABLE.store(!results.is_empty(), Ordering::Relaxed);
-                if let Some(b) = results.first() {
-                    let brightness = b.current_brightness as u32;
-                    if brightness != last_brightness { last_brightness = brightness; CURRENT_BRIGHTNESS.store(brightness, Ordering::Relaxed); let _ = handle_brightness.emit("brightness-change", BrightnessChangeEvent { brightness }); }
-                }
-            }
-            std::thread::sleep(std::time::Duration::from_millis(1500));
         }
     });
 
@@ -924,9 +902,12 @@ pub fn setup_system_worker(app_handle: AppHandle) -> Sender<SystemCommand> {
                                                             rect.right >= screen_rect.right && rect.bottom >= screen_rect.bottom;
                                     
                                     // Truly fullscreen means client covers screen, OR window matches screen but is not just a standard maximized window
-                                    current_is_fs = (is_client_fullscreen || is_matches_screen) && !is_maximized_standard;
+                                    // Panels are primary-only: a fullscreen game on a
+                                    // secondary display must not hide the primary shell.
+                                    let on_primary=mi.dwFlags&1!=0;
+                                    current_is_fs = on_primary && (is_client_fullscreen || is_matches_screen) && !is_maximized_standard;
 
-                                    if current_is_fs || is_maximized {
+                                    if current_is_fs || (on_primary && is_maximized) {
                                         should_overlap = true;
                                         should_notch_overlap = true;
                                     } else {
@@ -934,14 +915,12 @@ pub fn setup_system_worker(app_handle: AppHandle) -> Sender<SystemCommand> {
                                         if let Ok(dock_rect_lock) = DOCK_RECT.lock() {
                                             if let Some(dr) = *dock_rect_lock {
                                                 let scale = cached_scale;
-                                                let d_left = (dr.x as f64 * scale) as i32;
-                                                let d_right = d_left + (dr.width as f64 * scale) as i32;
-                                                let res_h = (56.0 * scale) as i32;
-                                                let trigger_y = screen_rect.bottom - res_h;
-
-                                                if rect.left < d_right - 4 && rect.right > d_left + 4 && 
-                                                   rect.bottom > trigger_y + 4 {
-                                                    should_overlap = true;
+                                                if let Some((origin,_))=DOCK_WINDOW_RECT.lock().ok().and_then(|g|*g){
+                                                    let left=origin.x+(dr.x as f64*scale) as i32;
+                                                    let top=origin.y+(dr.y as f64*scale) as i32;
+                                                    let right=left+(dr.width as f64*scale) as i32;
+                                                    let bottom=top+(dr.height as f64*scale) as i32;
+                                                    should_overlap=rect.left<right-4&&rect.right>left+4&&rect.top<bottom-4&&rect.bottom>top+4;
                                                 }
                                             }
                                         }
@@ -949,14 +928,12 @@ pub fn setup_system_worker(app_handle: AppHandle) -> Sender<SystemCommand> {
                                         if let Ok(notch_rect_lock) = NOTCH_RECT.lock() {
                                             if let Some(nr) = *notch_rect_lock {
                                                 let scale = cached_scale;
-                                                let n_left = (nr.x as f64 * scale) as i32;
-                                                let n_right = n_left + (nr.width as f64 * scale) as i32;
-                                                let res_h = (36.0 * scale) as i32;
-                                                let trigger_y = screen_rect.top + res_h;
-
-                                                if rect.left < n_right - 4 && rect.right > n_left + 4 && 
-                                                   rect.top < trigger_y - 4 {
-                                                    should_notch_overlap = true;
+                                                if let Some((origin,_))=MAIN_WINDOW_RECT.lock().ok().and_then(|g|*g){
+                                                    let left=origin.x+(nr.x as f64*scale) as i32;
+                                                    let top=origin.y+(nr.y as f64*scale) as i32;
+                                                    let right=left+(nr.width as f64*scale) as i32;
+                                                    let bottom=top+(nr.height as f64*scale) as i32;
+                                                    should_notch_overlap=rect.left<right-4&&rect.right>left+4&&rect.top<bottom-4&&rect.bottom>top+4;
                                                 }
                                             }
                                         }
@@ -1037,155 +1014,7 @@ pub fn setup_system_worker(app_handle: AppHandle) -> Sender<SystemCommand> {
 
 
 
-fn set_physical_monitors_brightness(brightness: u32) {
-    unsafe {
-        use windows::Win32::Graphics::Gdi::{EnumDisplayMonitors, HDC, HMONITOR};
-        use windows::Win32::Foundation::{RECT, LPARAM};
-        use windows::core::BOOL;
-
-        unsafe extern "system" fn monitor_enum_proc(
-            hmonitor: HMONITOR,
-            _: HDC,
-            _: *mut RECT,
-            lparam: LPARAM,
-        ) -> BOOL {
-            let brightness = lparam.0 as u32;
-            #[repr(C)]
-            #[derive(Clone, Copy)]
-            struct PHYSICAL_MONITOR {
-                h_physical_monitor: usize,
-                sz_physical_monitor_description: [u16; 128],
-            }
-            #[link(name = "dxva2")]
-            extern "system" {
-                fn GetNumberOfPhysicalMonitorsFromHMONITOR(
-                    hMonitor: HMONITOR,
-                    pdwNumberOfPhysicalMonitors: *mut u32,
-                ) -> BOOL;
-                fn GetPhysicalMonitorsFromHMONITOR(
-                    hMonitor: HMONITOR,
-                    dwPhysicalMonitorArraySize: u32,
-                    pPhysicalMonitorArray: *mut PHYSICAL_MONITOR,
-                ) -> BOOL;
-                fn DestroyPhysicalMonitors(
-                    dwPhysicalMonitorArraySize: u32,
-                    pPhysicalMonitorArray: *mut PHYSICAL_MONITOR,
-                ) -> BOOL;
-                fn SetMonitorBrightness(
-                    hMonitor: usize,
-                    dwNewBrightness: u32,
-                ) -> BOOL;
-            }
-
-            let mut count = 0u32;
-            if GetNumberOfPhysicalMonitorsFromHMONITOR(hmonitor, &mut count).as_bool() && count > 0 {
-                let mut monitors = vec![std::mem::zeroed::<PHYSICAL_MONITOR>(); count as usize];
-                if GetPhysicalMonitorsFromHMONITOR(hmonitor, count, monitors.as_mut_ptr()).as_bool() {
-                    for mon in &monitors {
-                        if mon.h_physical_monitor != 0 {
-                            let _ = SetMonitorBrightness(mon.h_physical_monitor, brightness);
-                        }
-                    }
-                    let _ = DestroyPhysicalMonitors(count, monitors.as_mut_ptr());
-                }
-            }
-            true.into()
-        }
-
-        let _ = EnumDisplayMonitors(
-            None, None,
-            Some(monitor_enum_proc),
-            LPARAM(brightness as isize),
-        );
-    }
-}
-
-pub fn setup_brightness_worker() {
-    let (tx, rx) = channel::<u32>();
-    let _ = BRIGHTNESS_SENDER.set(tx);
-    std::thread::spawn(move || unsafe {
-        // Direct WMI COM + DXVA2 implementation (zero child processes spawned).
-        use windows::Win32::System::Com::{
-            CoInitializeEx, CoUninitialize, COINIT_MULTITHREADED, CoCreateInstance, CLSCTX_ALL,
-        };
-        use windows::Win32::System::Wmi::{IWbemLocator, IWbemClassObject, WbemLocator, WBEM_GENERIC_FLAG_TYPE};
-        use windows::Win32::System::Variant::{VARIANT, VariantClear, VARENUM};
-
-        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
-
-        let locator: IWbemLocator = match CoCreateInstance(&WbemLocator, None, CLSCTX_ALL) {
-            Ok(l) => l,
-            Err(_) => {
-                let _ = CoUninitialize();
-                return;
-            }
-        };
-        let ns = windows::core::BSTR::from("root\\WMI");
-        let empty_bstr = windows::core::BSTR::new();
-        let services = match locator.ConnectServer(&ns, &empty_bstr, &empty_bstr, &empty_bstr, 0, &empty_bstr, None) {
-            Ok(s) => s,
-            Err(_) => {
-                let _ = CoUninitialize();
-                return;
-            }
-        };
-
-        while let Ok(brightness) = rx.recv() {
-            let brightness = brightness.min(100);
-            // 1. Laptop internal panel via WMI WmiMonitorBrightnessMethods
-            let wql = windows::core::BSTR::from("WQL");
-            let q = windows::core::BSTR::from("SELECT * FROM WmiMonitorBrightnessMethods");
-            if let Ok(enum_obj) = services.ExecQuery(&wql, &q, WBEM_GENERIC_FLAG_TYPE(0), None) {
-                let mut row = [None::<IWbemClassObject>; 1];
-                let mut returned = 0u32;
-                while enum_obj.Next(-1i32, &mut row, &mut returned).is_ok() && returned > 0 {
-                    if let Some(obj) = row[0].take() {
-                        let mut var = VARIANT::default();
-                        if obj.Get(windows::core::w!("__RELPATH"), 0i32, &mut var, None, None).is_ok() {
-                            let relpath_str = var.Anonymous.Anonymous.Anonymous.bstrVal.to_string();
-                            let _ = VariantClear(&mut var);
-                            if !relpath_str.is_empty() {
-                                let obj_path = windows::core::BSTR::from(relpath_str.as_str());
-                                let method_name = windows::core::BSTR::from("WmiSetBrightness");
-
-                                let mut in_cls: Option<IWbemClassObject> = None;
-                                if obj.GetMethod(windows::core::w!("WmiSetBrightness"), 0i32, &mut in_cls, std::ptr::null_mut()).is_ok() {
-                                    if let Some(in_cls) = in_cls {
-                                        if let Ok(in_params) = in_cls.SpawnInstance(0i32) {
-                                            let mut b_var = VARIANT::default();
-                                            let b_anon = &mut b_var.Anonymous.Anonymous;
-                                            b_anon.vt = VARENUM(17); // VT_UI1
-                                            b_anon.Anonymous.bVal = brightness as u8;
-                                            let _ = in_params.Put(windows::core::w!("Brightness"), 0i32, &b_var, 0);
-
-                                            let mut t_var = VARIANT::default();
-                                            let t_anon = &mut t_var.Anonymous.Anonymous;
-                                            t_anon.vt = VARENUM(3); // VT_I4
-                                            t_anon.Anonymous.lVal = 0i32;
-                                            let _ = in_params.Put(windows::core::w!("Timeout"), 0i32, &t_var, 0);
-
-                                            let _ = services.ExecMethod(
-                                                &obj_path, &method_name, WBEM_GENERIC_FLAG_TYPE(0), None,
-                                                Some(&in_params), None, None,
-                                            );
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 2. Desktop external monitor via Physical Monitor API (DXVA2 DDC/CI)
-            set_physical_monitors_brightness(brightness);
-
-
-        }
-        let _ = CoUninitialize();
-    });
-}
-
+pub fn setup_brightness_worker() { crate::brightness::setup_worker(); }
 
 static MOUSE_HOOK_APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 static MH_LAST_MAIN_IGNORE: AtomicI32 = AtomicI32::new(-1);
@@ -1294,6 +1123,13 @@ pub fn setup_mouse_hook(app_handle: AppHandle) {
 }
 
 unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> windows::Win32::Foundation::LRESULT {
+    // OLE file drags do not reliably deliver DOM mouse-up to the destination
+    // WebView. Release its temporary hover lease when the physical button lifts.
+    if code >= 0 && (wparam.0 == WM_LBUTTONUP as usize || wparam.0 == WM_RBUTTONUP as usize) {
+        if let Some(app) = MOUSE_HOOK_APP_HANDLE.get() {
+            let _ = app.emit_to("dock", "dock-drag-release", ());
+        }
+    }
     if code >= 0 && wparam.0 == WM_MOUSEMOVE as usize {
         // Throttle to ~30fps (32ms) to match old polling cadence.
         // Without this, state checks and set_ignore_cursor_events fire on
@@ -1369,6 +1205,9 @@ unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPA
                 }
             } else if let Some(dock_win) = app_handle.get_webview_window("dock") {
                 if dock_win.is_visible().unwrap_or(false) {
+                    let dock_design=get_setting_str(&app_handle,"bloom-dock-design").and_then(|raw|serde_json::from_str::<serde_json::Value>(&raw).ok());
+                    let dock_edge=dock_design.as_ref().and_then(|d|d.get("edge")).and_then(|v|v.as_str()).unwrap_or("bottom");
+                    let vertical_dock=matches!(dock_edge,"left"|"right");
                     let mut is_click_interactive = false;
                     let mut is_hovered = false;
                     let mut dock_span: Option<(i32, i32)> = None;
@@ -1397,7 +1236,7 @@ unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPA
                                     if cursor.x >= rx && cursor.x <= (rx + rw) && cursor.y >= ry && cursor.y <= (ry + rh) {
                                         is_click_interactive = true;
                                     }
-                                    dock_span = Some((rx, rx + rw));
+                                    dock_span = Some(if vertical_dock {(ry,ry+rh)} else {(rx,rx+rw)});
                                 }
                             }
 
@@ -1421,10 +1260,25 @@ unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPA
                     // Hot-edge detection (Bottom edge)
                     let in_dock_hover = DOCK_IS_HOVERED.load(Ordering::Relaxed);
                     let scale = dock_win.scale_factor().unwrap_or(1.0);
-                    let at_bottom_edge = cursor.y >= (mon_y + mon_h - (8.0 * scale) as i32) &&
-                                         cursor.x >= mon_x && cursor.x <= (mon_x + mon_w);
+                    let edge_size=(8.0*scale) as i32;
+                    let insets=crate::shell_controller::dock_insets();
+                    let safe_left=mon_x+(insets.left*scale).round() as i32;
+                    let safe_right=mon_x+mon_w-(insets.right*scale).round() as i32;
+                    let safe_top=mon_y+(insets.top*scale).round() as i32;
+                    let safe_bottom=mon_y+mon_h-(insets.bottom*scale).round() as i32;
+                    let at_bottom_edge=match dock_edge {
+                        "left"=>cursor.x>=safe_left&&cursor.x<=safe_left+edge_size&&cursor.y>=safe_top&&cursor.y<=safe_bottom,
+                        "right"=>cursor.x<=safe_right&&cursor.x>=safe_right-edge_size&&cursor.y>=safe_top&&cursor.y<=safe_bottom,
+                        _=>cursor.y>=safe_bottom-edge_size&&cursor.y<=safe_bottom&&cursor.x>=safe_left&&cursor.x<=safe_right,
+                    };
+                    let edge_cursor=if vertical_dock {cursor.y} else {cursor.x};
+                    let in_edge_span=dock_span.is_some_and(|(a,b)|edge_cursor>=a-(60.0*scale) as i32&&edge_cursor<=b+(60.0*scale) as i32);
+                    // A held drag can approach any point on the selected hot
+                    // edge; the collapsed 34px pill must not restrict reveal.
+                    use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState,VK_LBUTTON,VK_RBUTTON};
+                    let drag_button_down=GetAsyncKeyState(VK_LBUTTON.0 as i32)<0||GetAsyncKeyState(VK_RBUTTON.0 as i32)<0;
 
-                    if at_bottom_edge || in_dock_hover {
+                    if (at_bottom_edge&&(in_edge_span||drag_button_down)) || in_dock_hover {
                         is_hovered = true;
                         MH_DOCK_EXPIRY_MS.store(now + 500, Ordering::Relaxed);
                     }
@@ -1435,7 +1289,7 @@ unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPA
                     if at_bottom_edge {
                         if let Some((span_left, span_right)) = dock_span {
                             let edge_pad = (60.0 * scale) as i32;
-                            if cursor.x >= span_left - edge_pad && cursor.x <= span_right + edge_pad {
+                            if edge_cursor >= span_left - edge_pad && edge_cursor <= span_right + edge_pad {
                                 is_click_interactive = true;
                             }
                         }
@@ -1467,8 +1321,11 @@ unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPA
                         let in_notch_hover = NOTCH_IS_HOVERED.load(Ordering::Relaxed);
                         let mut is_notch_hovered = false;
                         let scale = main_win.scale_factor().unwrap_or(1.0);
-                        let at_top_edge = cursor.y <= (mon_y + (8.0 * scale) as i32) &&
-                                          cursor.x >= mon_x && cursor.x <= (mon_x + mon_w);
+                        let placement=get_setting_str(&app_handle,"bloom-island-position").unwrap_or_else(||"top-center".into());
+                        let monitor=crate::island_geometry::Bounds{x:mon_x,y:mon_y,width:mon_w,height:mon_h};
+                        let origin=MAIN_WINDOW_RECT.lock().ok().and_then(|g|*g).map(|(position,_)|(position.x,position.y)).unwrap_or((mon_x,mon_y));
+                        let pill=NOTCH_RECT.lock().ok().and_then(|g|*g).map(|r|crate::island_geometry::Bounds{x:origin.0+(r.x as f64*scale) as i32,y:origin.1+(r.y as f64*scale) as i32,width:(r.width as f64*scale) as i32,height:(r.height as f64*scale) as i32}).unwrap_or(crate::island_geometry::Bounds{x:mon_x+mon_w/2-120,y:mon_y,width:240,height:44});
+                        let at_top_edge=crate::island_geometry::edge_activation(&placement,monitor,pill,(cursor.x,cursor.y),scale*crate::utils::get_bloom_scale(&app_handle));
 
                         if at_top_edge || in_notch_hover {
                             is_notch_hovered = true;
@@ -1482,32 +1339,14 @@ unsafe extern "system" fn mouse_hook_proc(code: i32, wparam: WPARAM, lparam: LPA
                             if let Ok(region) = NOTCH_RECT.try_lock() {
                                 if let Some(r) = *region {
                                     let scale = main_win.scale_factor().unwrap_or(1.0);
-                                    let pad_x = (20.0 * scale) as i32;
-                                    let pad_y_bottom = (5.0 * scale) as i32;
-                                    // Hysteresis keeps the notch interactive a little past
-                                    // its bounds once grabbed, so removing the edge-forced
-                                    // interactivity doesn't reintroduce boundary flicker.
-                                    let hyst = if MH_LAST_MAIN_IGNORE.load(Ordering::Relaxed) == 0 { (10.0 * scale) as i32 } else { 0 };
-                                    let rx = win_pos.x + (r.x as f64 * scale) as i32 - pad_x - hyst;
-                                    let rw = (r.width as f64 * scale) as i32 + (pad_x * 2) + (hyst * 2);
-                                    let ry_top = win_pos.y;
-                                    let ry_bottom = win_pos.y + (r.height as f64 * scale) as i32 + pad_y_bottom + hyst;
-
-                                    if cursor.x >= rx && cursor.x <= (rx + rw) && cursor.y >= ry_top && cursor.y <= ry_bottom {
-                                        is_click_interactive = true;
-                                    }
-
-                                    // Approaching along the top edge keeps the window
-                                    // interactive while near the notch's horizontal
-                                    // span, so peek/hover can't flicker at the
-                                    // boundary. The screen corners stay click-through.
-                                    let edge_pad = (60.0 * scale) as i32;
-                                    if at_top_edge && cursor.x >= rx - edge_pad && cursor.x <= rx + rw + edge_pad {
-                                        is_click_interactive = true;
-                                    }
+                                    let actual=crate::island_geometry::Bounds{x:win_pos.x+(r.x as f64*scale) as i32,y:win_pos.y+(r.y as f64*scale) as i32,width:(r.width as f64*scale) as i32,height:(r.height as f64*scale) as i32};
+                                    is_click_interactive=crate::island_geometry::contains_visible(actual,(cursor.x,cursor.y),crate::commands::NOTCH_SURFACE_VISIBLE.load(Ordering::Relaxed));
                                 }
                             }
                         }
+
+                        // Activation wakes a hidden panel but never intercepts a click until
+                        // its real DOM surface has become visible at the cursor.
 
                         let final_notch_hover = is_notch_hovered || now < MH_TOPBAR_EXPIRY_MS.load(Ordering::Relaxed);
                         let prev = MH_LAST_TOP_EDGE_HOVER.load(Ordering::Relaxed);
@@ -1835,29 +1674,28 @@ pub fn sync_overlays(app: &AppHandle) {
 
 static TOP_APPBAR_RECT: std::sync::Mutex<Option<(isize,i32,i32,i32,i32)>>=std::sync::Mutex::new(None);
 pub fn register_appbar(window: tauri::WebviewWindow) {
-    if CURRENT_FOREGROUND_FULLSCREEN.load(Ordering::Relaxed) {return;}
     let reserve = get_setting_str(window.app_handle(), "bloom-notch-mode").as_deref().unwrap_or("fixed") == "fixed"
+        && get_setting_str(window.app_handle(), "bloom-island-position").as_deref().unwrap_or("top-center").starts_with("top")
         && get_setting_str(window.app_handle(), "bloom-notch-reserve-space").as_deref() == Some("true");
     if !reserve {
         if let Ok(hwnd) = window.hwnd() {
             if MAIN_APPBAR_REGISTERED.swap(false, Ordering::Relaxed) { unregister_appbar_native(hwnd); }
             *TOP_APPBAR_RECT.lock().unwrap_or_else(|e|e.into_inner())=None;
             if let Ok(Some(monitor)) = window.primary_monitor() {
-                let height = ((760.0 * crate::utils::get_bloom_scale(window.app_handle()) * monitor.scale_factor()) as u32).min(monitor.size().height);
+                let height = monitor.size().height;
                 let _ = window.set_position(*monitor.position());
                 let _ = window.set_size(tauri::PhysicalSize::new(monitor.size().width, height));
             }
-            re_assert_topmost(hwnd);
+            if !CURRENT_FOREGROUND_FULLSCREEN.load(Ordering::Relaxed){re_assert_topmost(hwnd);}
         }
         return;
     }
     if let Ok(Some(monitor)) = window.app_handle().primary_monitor() {
         let m_size = monitor.size();
         let m_pos = monitor.position();
-        let hwnd = window.hwnd().unwrap();
+        let Ok(hwnd) = window.hwnd() else{return};
         let scale = monitor.scale_factor();
         let bloom_scale = crate::utils::get_bloom_scale(window.app_handle());
-        let ph = (((760.0 * bloom_scale) * scale) as i32).min(m_size.height as i32);
         let pr = ((40.0 * bloom_scale) * scale) as i32;  // Scale the reserved top screen space
 
         
@@ -1899,6 +1737,7 @@ pub fn register_appbar(window: tauri::WebviewWindow) {
             
             // Use the shell-approved rect for the final position, but keep our ph height for the window
             let final_width = abd.rc.right - abd.rc.left;
+            let ph=(m_pos.y+m_size.height as i32-abd.rc.top).max(1);
             
             let mut current_rect = RECT::default();
             let mut already_positioned = false;
@@ -1922,7 +1761,7 @@ pub fn register_appbar(window: tauri::WebviewWindow) {
             // set_always_on_top(true) to include SWP_NOACTIVATE and re-stamp WS_EX_NOACTIVATE.
             // This prevents WM_ACTIVATE from reaching WebView2, which caused bloom windows
             // to blank/hide when other windows were minimized or closed.
-            re_assert_topmost(hwnd);
+            if !CURRENT_FOREGROUND_FULLSCREEN.load(Ordering::Relaxed){re_assert_topmost(hwnd);}
 
             if !window.is_visible().unwrap_or(false) {
                 let _ = window.show();
@@ -2084,7 +1923,8 @@ pub unsafe extern "system" fn enum_windows_proc(hwnd: HWND, lparam: LPARAM) -> B
                             || lowercase_path.contains("chrome.exe")
                         {
                             match crate::utils::get_window_app_user_model_id(hwnd) {
-                                Some(aumid) if aumid.contains('!') => aumid,
+                                Some(aumid) if aumid.contains('!')
+                                    || crate::commands::browser_web_app_id_from_aumid(&aumid).is_some() => aumid,
                                 _ => path,
                             }
                         } else {
@@ -2123,19 +1963,65 @@ fn reposition_all_windows(app_handle: &AppHandle) {
     }
     crate::shell_controller::request_refresh(app_handle);
     sync_overlays(app_handle);
-    // Re-assert topmost on all windows after repositioning to recover from any z-order loss
-    if let Some(main_win) = app_handle.get_webview_window("main") {
-        if let Ok(hwnd) = main_win.hwnd() { re_assert_topmost(hwnd); }
+    // Never raise the shell over a fullscreen primary display during DPI/wake
+    // recovery. shell_controller will retain the dock's fullscreen z-order.
+    if !CURRENT_FOREGROUND_FULLSCREEN.load(Ordering::Relaxed) {
+        if let Some(main_win) = app_handle.get_webview_window("main") {
+            if let Ok(hwnd) = main_win.hwnd() { re_assert_topmost(hwnd); }
+        }
+        if let Some(dock_win) = app_handle.get_webview_window("dock") {
+            if let Ok(hwnd) = dock_win.hwnd() { re_assert_topmost(hwnd); }
+        }
     }
-    if let Some(dock_win) = app_handle.get_webview_window("dock") {
-        if let Ok(hwnd) = dock_win.hwnd() { re_assert_topmost(hwnd); }
-    }
+}
+
+static DISPLAY_LAYOUT_REVISION:std::sync::atomic::AtomicU64=std::sync::atomic::AtomicU64::new(0);
+/// Called from display/DPI events; defer all Tauri window access outside callbacks.
+pub fn request_display_refresh(app:&AppHandle){
+    let revision=DISPLAY_LAYOUT_REVISION.fetch_add(1,Ordering::SeqCst)+1;
+    MH_LAST_MONITOR_UPDATE_MS.store(0,Ordering::Relaxed);
+    *MH_CACHED_MON_POS.lock().unwrap_or_else(|e|e.into_inner())=None;
+    *MH_CACHED_MON_SIZE.lock().unwrap_or_else(|e|e.into_inner())=None;
+    *NOTCH_RECT.lock().unwrap_or_else(|e|e.into_inner())=None;
+    *DOCK_RECT.lock().unwrap_or_else(|e|e.into_inner())=None;
+    *MENU_RECT.lock().unwrap_or_else(|e|e.into_inner())=None;
+    MENU_IS_OPEN.store(false,Ordering::Relaxed);
+    crate::commands::NOTCH_SURFACE_VISIBLE.store(false,Ordering::Relaxed);
+    MH_LAST_MAIN_IGNORE.store(-1,Ordering::Relaxed);MH_LAST_DOCK_IGNORE.store(-1,Ordering::Relaxed);
+    let app=app.clone();
+    tauri::async_runtime::spawn(async move{
+        let pause=app.clone();tauri::async_runtime::spawn_blocking(move||{for label in ["main","dock"]{if let Some(w)=pause.get_webview_window(label){let _=w.set_ignore_cursor_events(true);}}}).await.ok();
+        tokio::time::sleep(Duration::from_millis(250)).await;
+        if DISPLAY_LAYOUT_REVISION.load(Ordering::SeqCst)!=revision{return}
+        tauri::async_runtime::spawn_blocking(move||{
+            reposition_all_windows(&app);
+            let _=app.emit("display-layout-changed",revision);
+        }).await.ok();
+    });
 }
 
 static SHELL_HOOK_MESSAGE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
 
 pub fn setup_display_change_monitor(app_handle: AppHandle) {
     let _ = crate::state::DISPLAY_MONITOR_HANDLE.set(app_handle);
+
+    // Some drivers do not broadcast a useful DISPLAYCHANGE for a primary-screen
+    // or scaling switch. Track the real monitor signature without cursor movement.
+    std::thread::spawn(||{
+        let mut previous=None;
+        let mut previous_tray=Vec::new();
+        let mut initialized=false;
+        loop{
+            if let Some(app)=DISPLAY_MONITOR_HANDLE.get(){
+                let current=app.primary_monitor().ok().flatten().map(|m|crate::island_geometry::MonitorSignature::new(m.position().x,m.position().y,m.size().width,m.size().height,m.scale_factor()));
+                if current!=previous{if initialized{request_display_refresh(app);}previous=current;}
+                let tray=crate::shell_controller::primary_taskbar_signature();
+                if tray!=previous_tray{if initialized{crate::shell_controller::request_refresh(app);}previous_tray=tray;}
+                initialized=true;
+            }
+            std::thread::sleep(Duration::from_secs(1));
+        }
+    });
 
     std::thread::spawn(|| {
         unsafe {
@@ -2255,18 +2141,7 @@ unsafe extern "system" fn display_monitor_proc(
 
     match msg {
         WM_DISPLAYCHANGE => {
-            let now = get_now_ms();
-            let last = LAST_DISPLAY_CHANGE_MS.load(Ordering::Relaxed);
-            if now - last > 500 {
-                LAST_DISPLAY_CHANGE_MS.store(now, Ordering::Relaxed);
-                if let Some(app_handle) = DISPLAY_MONITOR_HANDLE.get() {
-                    let ah = app_handle.clone();
-                    tauri::async_runtime::spawn(async move {
-                        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-                        reposition_all_windows(&ah);
-                    });
-                }
-            }
+            if let Some(app)=DISPLAY_MONITOR_HANDLE.get(){request_display_refresh(app);}
             LRESULT(0)
         }
         WM_POWERBROADCAST => {
@@ -2282,7 +2157,7 @@ unsafe extern "system" fn display_monitor_proc(
                             // Longer delay for wake from sleep to allow display to fully initialize
                             let delay = if pw == PBT_APMRESUMESUSPEND { 500 } else { 300 };
                             tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
-                            reposition_all_windows(&ah);
+                            request_display_refresh(&ah);
                         });
                     }
                 }
@@ -2291,6 +2166,7 @@ unsafe extern "system" fn display_monitor_proc(
         }
         WM_DWMCOLORIZATIONCOLORCHANGED | WM_SETTINGCHANGE => {
             if let Some(app_handle) = DISPLAY_MONITOR_HANDLE.get() {
+                if msg==WM_SETTINGCHANGE{request_display_refresh(app_handle);}
                 let color_hex = if let Some(c) = crate::commands::get_windows_accent_color() {
                     c
                 } else {

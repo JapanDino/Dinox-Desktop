@@ -1,3 +1,4 @@
+import {tx} from './desktopText';
 import {tr} from './i18n/core';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
@@ -32,6 +33,7 @@ interface CompactMediaPlayerProps {
     onAnimatePrev: () => void;
     onAnimateNext: () => void;
     onLayoutChange: (layout: 'classic' | 'compact') => void;
+    onOutput?:()=>void;
 }
 const MARQUEE_SPEED = 30;
 const MARQUEE_MIN_DURATION = 5;
@@ -87,7 +89,7 @@ function formatRemaining(elapsed: number, duration: number): string {
     const seconds = totalSeconds % 60;
     return `-${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
-export function CompactMediaPlayer({ mediaInfo, albumArtUrl, albumArtKey, isPlaying, volume, volumeExpanded, onVolumeExpandedChange, onTogglePlayPause, onVolumeChange, prevFront, prevBack, nextFront, nextBack, onAnimatePrev, onAnimateNext, onLayoutChange, }: CompactMediaPlayerProps) {
+export function CompactMediaPlayer({ mediaInfo, albumArtUrl, albumArtKey, isPlaying, volume, volumeExpanded, onVolumeExpandedChange, onTogglePlayPause, onVolumeChange, prevFront, prevBack, nextFront, nextBack, onAnimatePrev, onAnimateNext, onLayoutChange, onOutput }: CompactMediaPlayerProps) {
     const seekRef = useRef<HTMLInputElement>(null);
     const positionMs = mediaInfo.position_ms ?? 0;
     const durationMs = mediaInfo.duration_ms ?? 0;
@@ -174,14 +176,14 @@ export function CompactMediaPlayer({ mediaInfo, albumArtUrl, albumArtKey, isPlay
         </motion.button>
 
         <div className="cmp-main-controls">
-          <motion.button className="cmp-btn" onClick={(e) => { e.stopPropagation(); onAnimatePrev(); }} whileTap={{ scale: 0.9 }}>
+          <motion.button className="cmp-btn" aria-label={tx('Предыдущий трек','Previous track')} onClick={(e) => { e.stopPropagation(); onAnimatePrev(); }} whileTap={{ scale: 0.9 }}>
             <div className="cmp-slide-wrap">
               <motion.div animate={prevBack} className="cmp-slide-layer"><SkipBackIcon size={30}/></motion.div>
               <motion.div animate={prevFront} className="cmp-slide-layer"><SkipBackIcon size={30}/></motion.div>
             </div>
           </motion.button>
 
-          <motion.button className="cmp-btn cmp-play" onClick={(e) => { e.stopPropagation(); onTogglePlayPause(); }} whileTap={{ scale: 0.95 }}>
+          <motion.button className="cmp-btn cmp-play" aria-label={isPlaying?tx('Пауза','Pause'):tx('Воспроизвести','Play')} onClick={(e) => { e.stopPropagation(); onTogglePlayPause(); }} whileTap={{ scale: 0.95 }}>
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={isPlaying ? "pause" : "play"} initial={{ opacity: 0, scale: 0.7 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.7 }} transition={{ duration: 0.12 }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {isPlaying ? <PauseIcon size={26}/> : <PlayIcon size={26}/>}
@@ -189,7 +191,7 @@ export function CompactMediaPlayer({ mediaInfo, albumArtUrl, albumArtKey, isPlay
             </AnimatePresence>
           </motion.button>
 
-          <motion.button className="cmp-btn" onClick={(e) => { e.stopPropagation(); onAnimateNext(); }} whileTap={{ scale: 0.9 }}>
+          <motion.button className="cmp-btn" aria-label={tx('Следующий трек','Next track')} onClick={(e) => { e.stopPropagation(); onAnimateNext(); }} whileTap={{ scale: 0.9 }}>
             <div className="cmp-slide-wrap">
               <motion.div animate={nextBack} className="cmp-slide-layer"><SkipForwardIcon size={30}/></motion.div>
               <motion.div animate={nextFront} className="cmp-slide-layer"><SkipForwardIcon size={30}/></motion.div>
@@ -199,7 +201,7 @@ export function CompactMediaPlayer({ mediaInfo, albumArtUrl, albumArtKey, isPlay
 
         <motion.button className="cmp-btn cmp-btn-side" onClick={(e) => {
             e.stopPropagation();
-            invoke('open_sound_settings').catch(() => { });
+            if(onOutput)onOutput();else invoke('open_sound_settings').catch(() => { });
         }} whileTap={{ scale: 0.9 }} title={tr("Audio Output")}>
           <HeadphonesIcon size={22}/>
         </motion.button>

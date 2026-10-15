@@ -1,0 +1,29 @@
+.power-panel-body{min-width:0;color:inherit;font-family:var(--dn-font,"Segoe UI Variable","Segoe UI",sans-serif)}
+.power-heading{display:flex;align-items:center;gap:10px;margin:0 0 16px}
+.power-heading strong{flex:1;font-size:16px;font-weight:600}
+.power-heading button,.power-list-heading button{display:grid;place-items:center;min-width:32px;min-height:32px;border-radius:var(--dn-radius-control,8px);flex-shrink:0}
+.power-battery{display:grid;grid-template-columns:34px minmax(0,1fr);gap:8px 12px;padding:12px;border-radius:var(--dn-radius-card,12px);background:color-mix(in srgb,var(--dock-text) 6%,transparent)}
+.power-battery-icon{display:grid;place-items:center;align-self:start;padding-top:3px}
+.power-battery strong{display:block;font-size:22px;font-weight:600;line-height:1.3;font-variant-numeric:tabular-nums}
+.power-battery span:not(.power-battery-icon){display:block;margin-top:3px;font-size:12px;color:color-mix(in srgb,var(--dock-text) 75%,transparent)}
+.power-battery progress{grid-column:1/-1;width:100%;height:5px;border:0;border-radius:3px;overflow:hidden;appearance:none}
+.power-battery progress::-webkit-progress-bar{background:color-mix(in srgb,var(--dock-text) 15%,transparent)}
+.power-battery progress::-webkit-progress-value{background:var(--dock-accent,var(--dock-text));border-radius:3px}
+.power-battery p{grid-column:1/-1;font-size:11px;line-height:1.5;margin:2px 0 0;color:color-mix(in srgb,var(--dock-text) 75%,transparent)}
+.power-list-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:16px 0 6px;font-size:12px;color:color-mix(in srgb,var(--dock-text) 75%,transparent)}
+.power-plans{padding:0;margin:0;list-style:none;display:grid;gap:4px}
+.system-panel .power-plans button{display:flex;width:100%;align-items:center;gap:12px;padding:12px;border:1px solid transparent;border-radius:var(--dn-radius-control,8px);text-align:left;min-width:0}
+.power-plans button>span{flex:1;min-width:0}
+.power-plans strong{display:block;font-weight:500;font-size:13px;overflow-wrap:anywhere;line-height:1.5}
+.power-plans small{display:block;font-size:11px;color:color-mix(in srgb,var(--dock-text) 70%,transparent);line-height:1.5;margin-top:2px}
+.system-panel .power-plans button[aria-pressed=true]{background:color-mix(in srgb,var(--dock-text) 6%,transparent);border-color:color-mix(in srgb,var(--dock-text) 16%,transparent)}
+.power-empty,.power-hint{font-size:12px;line-height:1.6;color:color-mix(in srgb,var(--dock-text) 75%,transparent);margin:12px 0}
+.power-hint{font-size:11px}
+.power-error p{margin:0}
+.power-error details{margin-top:6px;overflow-wrap:anywhere;font-size:11px}
+.power-error summary{cursor:pointer}
+.power-eco{display:grid;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid color-mix(in srgb,var(--dock-text) 10%,transparent)}
+.power-eco-heading{display:flex;gap:8px;align-items:center;font-size:12px;font-weight:500}
+.power-eco select{font:inherit;font-size:12px;min-height:34px;max-width:100%;padding:7px 10px;border:1px solid color-mix(in srgb,var(--dock-text) 20%,transparent);border-radius:var(--dn-radius-control,8px);background:var(--system-surface);color:var(--dock-text)}
+.power-eco p{font-size:11px;line-height:1.6;color:color-mix(in srgb,var(--dock-text) 75%,transparent);margin:0}
+.power-eco .system-error{padding:8px 10px}

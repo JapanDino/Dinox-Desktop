@@ -3,7 +3,8 @@ export const layoutDefaults:Record<string,string>={
  'bloom-status-widgets':JSON.stringify({left:['weather'],right:['battery']}),
  'bloom-island-date':'false','bloom-island-battery':'true','bloom-island-cpu':'true',
  'bloom-dock-design':JSON.stringify(dockDefaults),'bloom-notch-mode':'fixed',
- 'bloom-dock-mode':'fixed','bloom-dock-enabled':'true','bloom-unified-appearance':'true'
+ 'bloom-dock-mode':'fixed','bloom-dock-enabled':'true','bloom-unified-appearance':'true',
+ 'bloom-island-position':'top-center','bloom-notch-reserve-space':'false'
 };
 export function layoutDraft(snapshot:Record<string,unknown>){return Object.fromEntries(Object.entries(layoutDefaults).map(([key,fallback])=>[key,typeof snapshot[key]==='string'?snapshot[key] as string:fallback]));}
 export function layoutChanges(draft:Record<string,string>,snapshot:Record<string,unknown>){const previous=layoutDraft(snapshot);return Object.fromEntries(Object.keys(layoutDefaults).filter(k=>draft[k]!==previous[k]).map(k=>[k,draft[k]]));}

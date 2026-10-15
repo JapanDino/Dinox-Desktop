@@ -36,6 +36,7 @@ export function isQuiet(options: NotificationOptions, date = new Date()) {
     return start === end || start < end ? (now >= start && now < end) || (start === end) : now >= start || now < end;
 }
 export const noticeKey = (n: Notice) => `${n.app_id}:${n.id}:${n.created}`;
+export const automaticNoticeAllowed = (options: NotificationOptions, dnd: boolean, date = new Date()) => options.enabled && !dnd && !isQuiet(options, date);
 export function freshNotices(previous: Notice[], next: Notice[]) {
     const before=new Map(previous.map(n=>[noticeKey(n),n]));
     return next.filter(n=>{const old=before.get(noticeKey(n));return !old||old.title!==n.title||old.body!==n.body;});

@@ -13,6 +13,7 @@
 .dock-personal .dock-label{position:absolute;top:calc(var(--dock-size) + 7px);left:50%;transform:translateX(-50%);width:calc(var(--dock-size) + var(--dock-gap));font-size:9px;text-overflow:ellipsis;white-space:nowrap;overflow:hidden;text-align:center;opacity:.8;pointer-events:none}
 .dock-personal.with-labels .dock{padding-bottom:calc(var(--dock-padding) + 15px)}
 .dock-personal .dock-divider{height:calc(var(--dock-size)*.65);width:1px;background:color-mix(in srgb,var(--dock-text) 15%,transparent);flex-shrink:0;margin:0 2px}
+.dock-personal.dock-vertical .dock-divider{width:calc(var(--dock-size)*.65);height:1px;margin:2px 0}
 .dock-personal .dock-bell{position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .dock-personal .dock-bell span{position:absolute;right:1px;top:0;min-width:13px;height:13px;border-radius:8px;font-size:8px;background:var(--dock-accent);color:#16131c;display:grid;place-items:center}
 .dock-design-preview{padding:22px 12px 15px;background:linear-gradient(125deg,#63758828,#79836918);display:flex;align-items:center;flex-direction:column;gap:20px;overflow:hidden;min-height:110px}
@@ -25,4 +26,71 @@
 @media(prefers-reduced-motion:reduce){.dock-personal .dock,.dock-personal .dock-icon{transition:none}}
 
 .dock-personal .fallback-icon{color:var(--dock-text);opacity:.85}
-.dock-personal .bloom-icon-img{filter:var(--dock-logo-filter)}
+/* The dock can retain a dark palette while the island uses a light theme. */
+.dock-container.dock-personal .bloom-icon-img{filter:var(--dock-logo-filter,none)}
+.dock-container.dock-personal .dock-icon svg{stroke:var(--dock-text);color:var(--dock-text)}
+.light-mode .dock-container.dock-personal .active-indicator{background:var(--dock-text);box-shadow:none}
+
+/* Bloom's quiet shell: application artwork supplies colour, not extra tiles. */
+html[data-bloom-unified=true] .dock-personal .dock {
+ border-color:color-mix(in srgb,var(--dock-text) 12%,transparent);
+ box-shadow:0 6px var(--dock-shadow) #0003;
+ font-family:var(--dn-font,"Segoe UI",sans-serif);
+}
+html[data-bloom-unified=true] .dock-personal .dock-icon {
+ background:transparent;
+ transition:background-color .12s ease;
+}
+html[data-bloom-unified=true] .dock-personal .dock-icon:hover,
+html[data-bloom-unified=true] .dock-personal .dock-icon:focus-visible {
+ background:color-mix(in srgb,var(--dock-text) 8%,transparent);
+}
+html[data-bloom-unified=true] .dock-personal .dock-icon svg {stroke-width:1.65;}
+html[data-bloom-unified=true] .dock-personal .dock-divider {background:color-mix(in srgb,var(--dock-text) 12%,transparent);}
+html[data-bloom-unified=true] .dock-personal .active-indicator {opacity:.78;}
+html[data-bloom-unified=true] .dock-personal .tooltip {
+ background:var(--bloom-group-bg,#1a1a1e);color:var(--bloom-text,#f4f4f5);border:1px solid var(--bloom-border,#ffffff16);
+ font-family:var(--dn-font,"Segoe UI",sans-serif);font-size:11px;
+ padding:5px 9px;box-shadow:0 3px 12px #0003;
+}
+html[data-bloom-unified=true] .dock-personal .preview-tooltip {
+ background:var(--bloom-bg-expanded,#101012);backdrop-filter:none;
+ border-color:var(--bloom-border,#ffffff16);box-shadow:0 8px 24px #0004;
+}
+html[data-bloom-unified=true] .dock-personal .preview-item:hover {
+ background:var(--bloom-hover-bg,#ffffff0d);transform:none;border-color:transparent;
+}
+@media(prefers-reduced-motion:reduce){
+ html[data-bloom-unified=true] .dock-personal .dock-icon{transition:none;}
+}
+
+/* Customisation is a working preview, not a separate decorative theme. */
+.dock-design-preview {
+ background:var(--bloom-bg-expanded,#101012);
+ border-bottom:1px solid var(--bloom-border,#ffffff16);
+}
+.dock-preview-island {border-color:color-mix(in srgb,var(--dock-text) 13%,transparent);}
+.dock-preview-item>div {background:transparent;}
+.dock-preset-grid button {
+ border-color:var(--bloom-border,#ffffff20);border-radius:8px;
+ font:500 12px var(--dn-font,"Segoe UI Variable","Segoe UI",sans-serif);
+}
+.dock-preset-grid button:hover {background:var(--bloom-hover-bg,#ffffff12);}
+.dock-preset-grid .selected {
+ border-color:var(--bloom-accent,#d6d6de);background:var(--bloom-group-bg,#1a1a1e);
+}
+.dock-preset-grid button:focus-visible,.dock-design-bottom button:focus-visible {
+ outline:2px solid var(--bloom-accent,#d6d6de);outline-offset:2px;
+}
+.dock-range-grid label {font-size:12px;}
+.dock-range-grid label>span {color:var(--bloom-text-secondary,var(--bloom-text-muted,#aaaab4));}
+.dock-range-grid input {accent-color:var(--bloom-accent,#d6d6de);}
+.dock-design-bottom small,.dock-design-preview>span {
+ font-size:12px;line-height:1.5;color:var(--bloom-text-secondary,var(--bloom-text-muted,#aaaab4));
+}
+.dock-design-bottom button {
+ min-height:34px;padding:8px 10px;border-radius:8px;
+ border:1px solid var(--bloom-border,#ffffff20);background:var(--bloom-group-bg,#1a1a1e);
+ font:500 12px var(--dn-font,"Segoe UI Variable","Segoe UI",sans-serif);
+}
+.dock-design-bottom button:hover {background:var(--bloom-hover-bg,#ffffff12);}

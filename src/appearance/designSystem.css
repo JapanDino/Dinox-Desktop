@@ -1,0 +1,125 @@
+.settings-save-status{padding:8px 10px;color:var(--dn-muted);font-size:12px;}
+.settings-save-error-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.settings-save-error-actions button{min-height:32px;padding:5px 10px;border:1px solid var(--dn-border);border-radius:var(--dn-radius-control);background:var(--dn-control);color:var(--dn-text);cursor:pointer;}
+/* Semantic roles shared by the shell and its tools. Calendar / note colours
+   remain content, rather than becoming the colour of every control. */
+:root {
+  --dn-font: "Segoe UI Variable", "Segoe UI", sans-serif;
+  --dn-surface: var(--bloom-bg-expanded, #000);
+  --dn-text: var(--bloom-text, #f5f5f5);
+  --dn-muted: var(--bloom-text-muted, #a3a3a3);
+  --dn-raised: var(--theme-raised,#0f0f0f);
+  --dn-input: var(--theme-input,#141414);
+  --dn-control: var(--theme-control,#1a1a1a);
+  --dn-hover: var(--theme-hover,#292929);
+  --dn-border: var(--theme-border,#595959);
+  --dn-field-border: var(--theme-field-border,#777);
+  --dn-focus: #b7a6ff;
+  --dn-radius-control: 8px;
+  --dn-radius-card: 12px;
+  --dn-radius-dialog: 18px;
+  --dn-space-1: 4px;
+  --dn-space-2: 8px;
+  --dn-space-3: 12px;
+  --dn-space-4: 16px;
+  --dn-space-5: 24px;
+  --dn-font-caption: 12px;
+  --dn-font-body: 13px;
+  --dn-font-title: 18px;
+  --dn-error: #f0b5a5;
+}
+html[data-bloom-unified=true]{--dn-raised:#101012;--dn-input:#141416;--dn-control:#1a1a1e;--dn-hover:#26262b;--dn-border:#303034;--dn-field-border:#777;--dn-focus:#b7a6ff!important;--dn-error:#f0b5a5!important}
+html[data-bloom-unified] :is(.settings-container,.bloom-calendar,.bloom-notifications,.system-panel,.dinox-launcher,.widget-board,.dn-notes,.cs-connect,.cs-composer,.cs-tasks,.ai-limits-panel) {
+  font-family: var(--dn-font);
+}
+html[data-bloom-unified] :is(.settings-container,.bloom-calendar,.bloom-notifications,.system-panel,.dinox-launcher,.widget-board,.dn-notes,.cs-connect,.cs-composer,.cs-tasks,.layout-editor) :is(button,input,select,textarea) {
+  font-family:var(--dn-font);
+}
+html[data-bloom-unified] :is(.dinox-launcher,.dn-notes,.cs-composer,.cs-connect,.cs-tasks) {
+  background: var(--dn-surface); color: var(--dn-text);
+  border-color: var(--dn-border);
+}
+html[data-bloom-unified] :is(.dn-workspace,.wb-card,.wb-detail) {
+  background: var(--dn-raised); color: var(--dn-text); border-color: var(--dn-border);
+}
+html[data-bloom-unified] :is(.cs-composer,.dn-notes,.dinox-launcher,.widget-board) :is(input:not([type=checkbox]):not([type=range]):not([type=color]),select,textarea) {
+  color: var(--dn-text); background-color: var(--dn-input); border-color: var(--dn-field-border);
+  font-family: var(--dn-font);
+}
+html[data-bloom-unified] :is(.dn-notes,.widget-board,.dinox-launcher,.cs-composer,.cs-connect,.cs-tasks) button {
+  font-family: var(--dn-font); border-radius: var(--dn-radius-control);
+}
+html[data-bloom-unified] :is(.notice-control,.notice-source button,.cal-icon-button,.system-close,.cs-quick-close) {
+  width: 32px; height: 32px; min-width: 32px; min-height: 32px;
+  padding: 0; flex-shrink: 0; border-radius: var(--dn-radius-control);
+}
+html[data-bloom-unified] :is(.notice-control,.notice-source button,.cal-icon-button,.system-close) svg { width: 16px; height: 16px; }
+html[data-bloom-unified] :is(.close-btn) { width: 32px; height: 32px; }
+html[data-bloom-unified] :is(.close-btn) svg { width: 16px; height: 16px; }
+html[data-bloom-unified] :is(.settings-container,.system-panel,.bloom-calendar,.bloom-notifications,.dinox-launcher,.widget-board,.dn-notes,.cs-composer,.cs-connect) :is(button,select,input,textarea,[role=button]):focus-visible {
+  outline: 2px solid var(--dn-focus); outline-offset: 2px;
+}
+html[data-bloom-unified] .toggle-switch:focus-within .slider { outline: 2px solid var(--dn-focus); outline-offset: 3px; }
+html[data-bloom-unified] .settings-select {
+  font-family: var(--dn-font); min-height: 32px; font-size: 12px;
+  border-radius: var(--dn-radius-control); border-color: var(--dn-field-border);
+  padding: 5px 27px 5px 10px; text-align: left;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='m3 4.5 3 3 3-3' fill='none' stroke='%23999' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-position: right 9px center; background-repeat: no-repeat;
+}
+html[data-bloom-unified] .setting-label { font-size: 13px; }
+html[data-bloom-unified] .setting-desc { font-size: 12px; line-height: 1.5; }
+html[data-bloom-unified=true] input:checked + .slider { background: #f5f5f5; border-color: #f5f5f5; }
+html[data-bloom-unified=true] input:checked + .slider:before { background: #111; }
+html[data-bloom-unified=true] .cal-empty small,
+html[data-bloom-unified=true] .cal-empty-day { opacity: 1; color: #a3a3a3; }
+html[data-bloom-unified=true] .cal-month-grid .outside { opacity: 1; color: #888; }
+.settings-inline-error {
+  position: static; margin: 6px 14px 14px; padding: 10px 12px;
+  color: var(--dn-error); background: #57271e33; border: 1px solid #e9aa9633;
+  border-radius: var(--dn-radius-control); font: 12px/1.5 var(--dn-font);
+  overflow-wrap: anywhere;
+}
+.appearance-unified-hint { padding: 14px 18px; margin: 0; color: var(--dn-muted); font: 12px/1.6 var(--dn-font); }
+.cs-quick-composer { container-type: inline-size; }
+@container (max-width: 340px) {
+  .cs-quick-when { flex-wrap: wrap; }
+  .cs-quick-when input[type=date] { flex-basis: 100%; }
+  .cs-quick-when input[type=time] { min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slider,.slider:before { transition: none; }
+}
+
+html[data-bloom-unified] .system-panel>header>button { min-width:32px; min-height:32px; border-radius:var(--dn-radius-control); }
+
+/* Saved light palettes must change nested controls as well as the outer card. */
+html[data-bloom-unified=false].light-mode :is(.dinox-launcher,.dn-notes,.widget-board,.cs-composer,.cs-connect,.cs-tasks) {
+  color-scheme:light;
+}
+html[data-bloom-unified=false].light-mode :is(.dinox-launcher,.dn-notes,.wb-card,.wb-detail,.cs-composer,.cs-connect,.cs-tasks) button:not(:where(.dn-swatches button)) {
+  color:var(--dn-text); background:var(--dn-control); border-color:var(--dn-border);
+}
+html[data-bloom-unified=false].light-mode :is(.dinox-launcher,.dn-notes,.wb-card,.wb-detail,.cs-composer,.cs-connect,.cs-tasks) button:hover {
+  background:var(--dn-hover);
+}
+html[data-bloom-unified=false].light-mode :is(.launcher-results>.selected,.launcher-result-icon,.launcher-preferences-body,.launcher-section-label code,.dn-sidebar,.dn-format,.dn-editor-top) {
+  color:var(--dn-text); background:var(--dn-control); border-color:var(--dn-border);
+}
+html[data-bloom-unified=false].light-mode :is(.launcher-result-text small,.launcher-section-label,.launcher-privacy,.dinox-launcher kbd,.dn-notes small,.dn-notes time,.dn-editor-status,.wb-card small,.wb-card .wb-hint,.wb-empty,.wb-task-row time,.wb-note p,.wb-projects p,.wb-music p,.cs-tasks p) {
+  color:var(--dn-muted); opacity:1;
+}
+html[data-bloom-unified=false].light-mode :is(.wb-primary,.cs-primary) {
+  background:var(--dn-text)!important; color:var(--dn-surface)!important;
+}
+/* Semantic selected states survive light/custom button base rules. */
+html[data-bloom-unified] :is(.launcher-tabs,.wb-segments,.wb-presets,.dn-filter-row,.dn-actions,.dn-format) button[aria-pressed=true],
+html[data-bloom-unified] .wb-month button.selected {
+ background:var(--dn-text);color:var(--dn-surface);border-color:var(--dn-text);
+}
+html[data-bloom-unified] .launcher-results>.selected{background:var(--dn-control);outline:1px solid var(--dn-border);outline-offset:-1px}
+html[data-bloom-unified] :is(.dinox-launcher,.dn-notes,.widget-board) input::placeholder,
+html[data-bloom-unified] :is(.dinox-launcher,.dn-notes,.widget-board) textarea::placeholder{color:var(--dn-muted);opacity:1}
+html[data-bloom-unified] .dinox-launcher :is(.launcher-hint,.launcher-empty,.launcher-input kbd,footer){color:var(--dn-muted)}
+html[data-bloom-unified] .dinox-launcher .desktop-error{color:var(--dn-error)}
+html[data-bloom-unified=false].light-mode .dinox-launcher :is(.launcher-input,footer){border-color:var(--dn-border)}

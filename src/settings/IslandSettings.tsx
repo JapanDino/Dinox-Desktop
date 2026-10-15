@@ -4,9 +4,14 @@ import {Battery, Calendar, Cpu, PanelTop} from 'lucide-react';
 import {usePersonalSetting} from '../components/PersonalFeatures';
 import {SettingRow} from './SettingRow';
 import {tr} from '../i18n/core';
+import {tx} from '../desktopText';
+import {islandPosition,islandPositions} from './islandGeometry';
 
 export function IslandSettings() {
     const [reserve, setReserve] = usePersonalSetting('bloom-notch-reserve-space', 'false');
+    const [position,savePosition]=usePersonalSetting('bloom-island-position','top-center');
+    const [mode]=usePersonalSetting('bloom-notch-mode','fixed');
+    const canReserve=islandPosition(position).startsWith('top')&&mode==='fixed';
     const [date, setDate] = usePersonalSetting('bloom-island-date', 'false');
     const [battery, setBattery] = usePersonalSetting('bloom-island-battery', 'true');
     const [cpu, setCpu] = usePersonalSetting('bloom-island-cpu', 'true');
@@ -18,7 +23,8 @@ export function IslandSettings() {
         {icon: Cpu, label: 'Процессор рядом со временем', desc: 'Показывать без раскрытия острова', value: cpu, save: setCpu},
     ];
     return <><div className="setting-group-label">{tr('Компактный остров')}</div><div className="setting-group">
-        {options.map(option => <SettingRow key={option.label} icon={option.icon} label={tr(option.label)} desc={tr(option.desc)}><label className="toggle-switch"><input type="checkbox" aria-label={tr(option.label)} checked={option.value === 'true'} onChange={async e => {
+        <SettingRow icon={PanelTop} label={tx('Расположение острова','Island position')} desc={tx('Основной монитор. Предпросмотр и применение нескольких изменений доступны в редакторе рабочего стола.','Primary monitor. Preview and apply several changes in the workspace editor.')}><select className="settings-select" aria-label={tx('Расположение острова','Island position')} value={islandPosition(position)} onChange={async e=>{setError('');try{await savePosition(e.target.value);await invoke('sync_appbar');}catch{setError(tr('Не удалось сохранить настройку'));}}}>{islandPositions.map((value,index)=><option key={value} value={value}>{tx(['Вверху слева','Вверху по центру','Вверху справа','Слева','Справа','Внизу'][index],['Top left','Top center','Top right','Left','Right','Bottom'][index])}</option>)}</select></SettingRow>
+        {options.map(option => <SettingRow key={option.label} icon={option.icon} label={tr(option.label)} desc={tr(option.sync&&!canReserve?'Резервирование доступно только вверху в режиме «Всегда».':option.desc)}><label className="toggle-switch"><input type="checkbox" aria-label={tr(option.label)} disabled={Boolean(option.sync&&!canReserve)} checked={option.value === 'true'&&(!option.sync||canReserve)} onChange={async e => {
             setError('');
             try {await option.save(String(e.target.checked)); if (option.sync) await invoke('sync_appbar');}
             catch {setError(tr('Не удалось сохранить настройку'));}

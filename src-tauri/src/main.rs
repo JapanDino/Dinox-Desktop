@@ -7,6 +7,9 @@ mod services;
 mod commands;
 mod updater;
 mod diagnostics;
+mod settings_store;
+mod brightness;
+mod local_checks;
 mod calendar;
 mod calendar_sync;
 mod notifications;
@@ -22,10 +25,14 @@ mod localization;
 mod input_policy;
 mod system_launch;
 mod audio_mixer;
+mod audio_devices;
+mod power_controls;
 mod launcher;
 mod layout_editor;
+mod island_geometry;
 mod widgets;
 mod telegram_proxy;
+mod ai_limits;
 
 use tauri::Manager;
 use windows::Win32::System::Console::SetConsoleCtrlHandler;
@@ -60,6 +67,19 @@ fn queue_overlay_sync(app:&tauri::AppHandle) {
 }
 
 fn main() {
+    let local_check=std::env::args().nth(1).unwrap_or_default();
+    if local_check=="--probe-audio-routing" {
+        let report=audio_mixer::probe_own_routing();
+        let Some(path)=std::env::args().nth(2)else{std::process::exit(2)};
+        if std::fs::write(path,serde_json::to_vec_pretty(&report).unwrap()).is_err(){std::process::exit(2)}
+        return;
+    }
+    if matches!(local_check.as_str(),"--probe-local"|"--probe-brightness-roundtrip"){
+        let report=if local_check=="--probe-local"{local_checks::read_only()}else{local_checks::brightness_roundtrip()};
+        let Some(path)=std::env::args().nth(2)else{std::process::exit(2)};
+        if std::fs::write(path,serde_json::to_vec_pretty(&report).unwrap()).is_err(){std::process::exit(2)}
+        return;
+    }
     if std::env::args().nth(1).as_deref()==Some("--probe-notifications") {
         let report=notifications::access_probe();
         if let Some(path)=std::env::args().nth(2){if std::fs::write(path,serde_json::to_vec_pretty(&report).unwrap()).is_err(){std::process::exit(2)}}
@@ -150,8 +170,11 @@ fn main() {
             Some(vec![]),
         ))
         .invoke_handler(tauri::generate_handler![
+            ai_limits::ai_limits_snapshot, ai_limits::ai_limits_connect_codex, ai_limits::ai_limits_claude_bridge,
             telegram_proxy::telegram_proxy_status, telegram_proxy::telegram_proxy_set, telegram_proxy::telegram_proxy_connect,
-            audio_mixer::mixer_snapshot, audio_mixer::mixer_set, audio_mixer::mixer_default_device,
+            audio_mixer::mixer_snapshot, audio_mixer::mixer_set, audio_mixer::mixer_default_device, audio_mixer::mixer_route_app,
+            audio_devices::audio_devices_snapshot, audio_devices::audio_device_default, audio_devices::audio_device_set,
+            power_controls::power_snapshot, power_controls::power_set_scheme,
             launcher::launcher_files, launcher::launcher_open, launcher::launcher_show, launcher::launcher_hotkey_status,
             launcher::launcher_record_shortcut, launcher::launcher_retry_shortcut,
             widgets::widgets_show, widgets::widgets_hide, widgets::widgets_hotkey_status, widgets::widgets_retry_shortcut,
@@ -174,7 +197,7 @@ fn main() {
             dock_content::load_personal_pins, dock_content::save_personal_pins, dock_content::windows_taskbar_pins,
             notifications::notification_watch, notifications::notification_access_status, notifications::notification_request_access, notifications::notification_snapshot, notifications::open_bloom_notifications,
             hide_native_osd,
-            open_settings_window,
+            open_settings_window, open_search_settings, save_settings,
             open_wifi_settings,
             open_sound_settings,
             open_notification_center,
@@ -280,7 +303,6 @@ fn main() {
             update_dock_window_rect();
 
             let u_main = update_main_rect.clone();
-            let win_for_events = window.clone();
             let handle_for_events = app.handle().clone();
             window.on_window_event(move |e| {
                 match e {
@@ -289,13 +311,7 @@ fn main() {
                         queue_overlay_sync(&handle_for_events);
                     }
                     tauri::WindowEvent::ScaleFactorChanged { .. } => {
-                        let w = win_for_events.clone();
-                        let h = handle_for_events.clone();
-                        tauri::async_runtime::spawn(async move {
-                            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                            register_appbar(w);
-                            sync_overlays(&h);
-                        });
+                        crate::services::request_display_refresh(&handle_for_events);
                     }
                     tauri::WindowEvent::CloseRequested { api, .. } => {
                         api.prevent_close();
@@ -307,7 +323,6 @@ fn main() {
             });
 
             let u_dock = update_dock_window_rect.clone();
-            let dock_for_events = dock_win.clone();
             let handle_for_dock_events = app.handle().clone();
             dock_win.on_window_event(move |e| {
                 match e {
@@ -316,17 +331,7 @@ fn main() {
                         queue_overlay_sync(&handle_for_dock_events);
                     }
                     tauri::WindowEvent::ScaleFactorChanged { .. } => {
-                        let h = handle_for_dock_events.clone();
-                        if DOCK_APPBAR_REGISTERED.load(Ordering::Relaxed) {
-                            let w = dock_for_events.clone();
-                            tauri::async_runtime::spawn(async move {
-                                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                                register_dock_appbar(w);
-                                queue_overlay_sync(&h);
-                            });
-                        } else {
-                             queue_overlay_sync(&h);
-                        }
+                        crate::services::request_display_refresh(&handle_for_dock_events);
                     }
                     tauri::WindowEvent::CloseRequested { api, .. } => {
                         api.prevent_close();

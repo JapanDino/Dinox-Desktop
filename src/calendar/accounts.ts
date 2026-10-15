@@ -1,8 +1,15 @@
 import {tx} from '../desktopText';
 import type {CalendarSource,RemoteItem} from './model';
-export interface Collection{id:string;name:string;kind:'event'|'task';writable:boolean;enabled?:boolean;ics:string;items:RemoteItem[];checked:number}
+export interface Collection{id:string;name:string;kind:'event'|'task';writable:boolean;enabled?:boolean;color?:string;ics:string;items:RemoteItem[];checked:number}
 export interface CalendarAccount{id:string;provider:'google'|'yandex';label:string;collections:Collection[]}
-export function accountSources(accounts:CalendarAccount[]):CalendarSource[]{return accounts.flatMap(account=>account.collections.map(c=>({id:`sync:${account.id}:${c.kind}:${encodeURIComponent(c.id)}`,accountId:account.id,collectionId:c.id,provider:account.provider,kind:c.kind,writable:c.writable,name:`${c.name} · ${account.provider==='google'?'Google':'Яндекс'}`,color:c.kind==='task'?'#8dd6b0':'#b7a6ff',enabled:c.enabled!==false,ics:c.ics,checked:c.checked,...(account.provider==='google'?{items:c.items}:{})})));}
+// Provider colors take priority; old caches and providers without colors get a stable palette.
+export function collectionColor(c:Pick<Collection,'id'|'kind'|'color'>):string {
+ if(c.color&&/^#[0-9a-f]{6}$/i.test(c.color))return c.color;
+ const palette=['#b7a6ff','#8dd6b0','#e8b882','#8ebce8','#e69eb5','#d5cb85','#85c8cb'];
+ let hash=0;for(const char of c.kind+':'+c.id)hash=(Math.imul(hash,31)+char.charCodeAt(0))>>>0;
+ return palette[hash%palette.length];
+}
+export function accountSources(accounts:CalendarAccount[]):CalendarSource[]{return accounts.flatMap(account=>account.collections.map(c=>({id:`sync:${account.id}:${c.kind}:${encodeURIComponent(c.id)}`,accountId:account.id,collectionId:c.id,provider:account.provider,kind:c.kind,writable:c.writable,name:`${c.name} · ${account.provider==='google'?'Google':'Яндекс'}`,color:collectionColor(c),enabled:c.enabled!==false,ics:c.ics,checked:c.checked,...(account.provider==='google'?{items:c.items}:{})})));}
 export interface CreateDraft{request_id:string;account_id:string;collection_id:string;kind:'event'|'task';title:string;description:string;start:string|null;end:string|null;all_day:boolean}
 export function makeDraft(input:{source:CalendarSource;kind:'event'|'task';title:string;description:string;day:string;time:string;endDay:string;endTime:string;allDay:boolean;requestId:string}):CreateDraft{
  const {source,kind,title,description,day,time,endDay,endTime,allDay,requestId}=input;

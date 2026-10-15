@@ -1,12 +1,13 @@
 use std::{collections::HashMap,io::Write,os::windows::ffi::OsStrExt};
 use tauri::{Manager,Emitter};
 use serde_json::Value;
-const KEYS:&[&str]=&["bloom-status-widgets","bloom-island-date","bloom-island-battery","bloom-island-cpu","bloom-dock-design","bloom-notch-mode","bloom-dock-mode","bloom-dock-enabled","bloom-unified-appearance"];
+const KEYS:&[&str]=&["bloom-status-widgets","bloom-island-date","bloom-island-battery","bloom-island-cpu","bloom-dock-design","bloom-notch-mode","bloom-dock-mode","bloom-dock-enabled","bloom-unified-appearance","bloom-island-position","bloom-notch-reserve-space"];
 fn validate(values:&HashMap<String,String>)->Result<(),String>{
  if values.is_empty()||values.keys().any(|key|!KEYS.contains(&key.as_str()))||values.values().any(|v|v.len()>8192){return Err("Invalid layout".into());}
  for (key,value) in values{
   let valid=match key.as_str(){
    "bloom-notch-mode"=>matches!(value.as_str(),"fixed"|"smart"|"peek"|"hover"),
+   "bloom-island-position"=>matches!(value.as_str(),"top-left"|"top-center"|"top-right"|"left"|"right"|"bottom"),
    "bloom-dock-mode"=>matches!(value.as_str(),"fixed"|"smart"|"peek"),
    "bloom-dock-design"=>serde_json::from_str::<Value>(value).is_ok_and(|v|v.is_object()),
    "bloom-status-widgets"=>{
@@ -46,5 +47,6 @@ pub fn save_layout(app:tauri::AppHandle,values:HashMap<String,String>,expected:H
  fn one(key:&str,value:&str)->HashMap<String,String>{HashMap::from([(key.into(),value.into())])}
  #[test] fn layout_rejects_unrelated_settings(){assert!(validate(&one("bloom-shell-mode","replace")).is_err());}
  #[test] fn layout_rejects_invalid_modes_and_booleans(){assert!(validate(&one("bloom-notch-mode","broken")).is_err());assert!(validate(&one("bloom-island-date","yes")).is_err());assert!(validate(&one("bloom-notch-mode","hover")).is_ok());}
+ #[test] fn island_placement_is_allowlisted(){for position in ["top-left","top-center","top-right","left","right","bottom"]{assert!(validate(&one("bloom-island-position",position)).is_ok());}assert!(validate(&one("bloom-island-position","second-monitor")).is_err());assert!(validate(&one("bloom-notch-reserve-space","true")).is_ok());}
  #[test] fn layout_rejects_duplicate_and_overfull_widgets(){assert!(validate(&one("bloom-status-widgets",r#"{"left":["cpu"],"right":["cpu"]}"#)).is_err());assert!(validate(&one("bloom-status-widgets",r#"{"left":["cpu","ram","disk"],"right":[]}"#)).is_err());assert!(validate(&one("bloom-status-widgets",r#"{"left":["cpu","ram"],"right":["battery"]}"#)).is_ok());}
 }

@@ -13,7 +13,7 @@ export function WeekBanners({events,date,onSelect}:{events:CalendarEvent[];date:
     const visible = banners.filter(item => expanded || item.lane < 3);
     const rows = Math.max(1,...visible.map(item => item.lane + 1));
     return <div className="cal-span-section" role="region" aria-label={tx('События на весь день и несколько дней','All-day and multi-day events')}>
-      <div className="cal-span-grid" style={{gridTemplateRows:`repeat(${rows}, minmax(30px, auto))`}}>
+      <div className="cal-span-grid" style={{gridTemplateRows:`repeat(${rows}, minmax(var(--cal-banner-row-min, 30px), auto))`}}>
         <span className="cal-span-label" style={{gridRow:`1 / span ${rows}`}}>{tx('Весь день и дольше','All day & longer')}</span>
         {visible.map(({event,first,span,lane,continuesBefore,continuesAfter}) => <button
           key={event.id} className={`cal-span-event${continuesBefore?' continues-before':''}${continuesAfter?' continues-after':''}`}

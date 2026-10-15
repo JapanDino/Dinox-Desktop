@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import {paletteText} from './appearance/contrast';
 
 // Convert a hex color string to rgba with a specified alpha
 function hexToRgba(hex: string, alpha: number): string {
@@ -94,6 +95,16 @@ export async function applyTheme(
   brightness?: number
 ) {
   const root = document.documentElement;
+  const applyReadableText=(background:string)=>{
+    const colors=paletteText(background);
+    root.style.setProperty('--bloom-text',colors.foreground);
+    root.style.setProperty('--bloom-text-muted',colors.muted);
+    root.style.setProperty('--dn-focus',colors.focus);
+    root.style.setProperty('--dn-error',colors.error);
+    root.style.setProperty('--theme-field-border',colors.fieldBorder);
+    for(const key of ['raised','input','control','hover','border'] as const)root.style.setProperty(`--theme-${key}`,colors[key]);
+    return colors.darkText;
+  };
 
   if (opacity === undefined || opacity === null) {
     const cachedOpacity = localStorage.getItem('bloom-theme-opacity');
@@ -114,10 +125,9 @@ export async function applyTheme(
   const opExpanded = Math.min(1.0, opacity + 0.12);
 
   if (mode === 'light') {
+    applyReadableText('#f5f5f7');
     root.style.setProperty('--bloom-bg', `rgba(255, 255, 255, ${op})`);
     root.style.setProperty('--bloom-bg-expanded', `rgba(245, 245, 247, ${opExpanded})`);
-    root.style.setProperty('--bloom-text', '#1c1c1e');
-    root.style.setProperty('--bloom-text-muted', 'rgba(28, 28, 30, 0.65)');
     root.style.setProperty('--bloom-border', 'rgba(0, 0, 0, 0.12)');
     root.style.setProperty('--bloom-group-bg', 'rgba(0, 0, 0, 0.04)');
     root.style.setProperty('--bloom-accent', '#007aff');
@@ -131,12 +141,10 @@ export async function applyTheme(
     hsl.s = saturation * 100;
     hsl.l = brightness * 100;
     const finalBgColor = hslToHex(hsl.h, hsl.s, hsl.l);
-    const isLight = brightness > 0.55;
+    const isLight = applyReadableText(finalBgColor);
 
     root.style.setProperty('--bloom-bg', hexToRgba(finalBgColor, op));
     root.style.setProperty('--bloom-bg-expanded', hexToRgba(finalBgColor, opExpanded));
-    root.style.setProperty('--bloom-text', isLight ? '#1c1c1e' : '#ffffff');
-    root.style.setProperty('--bloom-text-muted', isLight ? 'rgba(28, 28, 30, 0.65)' : 'rgba(255, 255, 255, 0.65)');
     root.style.setProperty('--bloom-border', isLight ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)');
     root.style.setProperty('--bloom-group-bg', isLight ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.04)');
     root.style.setProperty('--bloom-accent', customColor);
@@ -157,12 +165,10 @@ export async function applyTheme(
       hsl.s = saturation * 100;
       hsl.l = brightness * 100;
       const finalBgColor = hslToHex(hsl.h, hsl.s, hsl.l);
-      const isLight = brightness > 0.55;
+      const isLight = applyReadableText(finalBgColor);
 
       root.style.setProperty('--bloom-bg', hexToRgba(finalBgColor, op));
       root.style.setProperty('--bloom-bg-expanded', hexToRgba(finalBgColor, opExpanded));
-      root.style.setProperty('--bloom-text', isLight ? '#1c1c1e' : '#ffffff');
-      root.style.setProperty('--bloom-text-muted', isLight ? 'rgba(28, 28, 30, 0.65)' : 'rgba(255, 255, 255, 0.65)');
       root.style.setProperty('--bloom-border', isLight ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)');
       root.style.setProperty('--bloom-group-bg', isLight ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.04)');
       root.style.setProperty('--bloom-accent', accentHex);
@@ -182,10 +188,9 @@ export async function applyTheme(
     }
   } else {
     // default/dark
+    applyReadableText('#000000');
     root.style.setProperty('--bloom-bg', `rgba(0, 0, 0, ${op})`);
     root.style.setProperty('--bloom-bg-expanded', `rgba(0, 0, 0, ${opExpanded})`);
-    root.style.setProperty('--bloom-text', '#ffffff');
-    root.style.setProperty('--bloom-text-muted', 'rgba(255, 255, 255, 0.6)');
     root.style.setProperty('--bloom-border', 'rgba(255, 255, 255, 0.1)');
     root.style.setProperty('--bloom-group-bg', 'rgba(255, 255, 255, 0.04)');
     root.style.setProperty('--bloom-accent', '#007aff');
@@ -249,8 +254,9 @@ export function initTheme() {
   // Listen to setting changes broadcasted from settings window
   // (localStorage sync is handled by saveAndLocal in Settings.tsx; we just apply the theme)
   const settingsPromise = listen<{ key: string; value: any }>('settings-changed', (event) => {
-    const { key } = event.payload;
+    const { key, value } = event.payload;
     if (bloomThemeKeys.includes(key)) {
+      localStorage.setItem(key,String(value));
       applyThemeFromStorage();
     }
   });
@@ -269,8 +275,9 @@ export function initTheme() {
   // Listen to external edits (e.g. settings.json edited outside the app)
   // localStorage sync is handled by useSettingsSync hook; we just apply the theme
   const externalPromise = listen<{ key: string; value: any }>('settings-external-changed', (event) => {
-    const { key } = event.payload;
+    const { key, value } = event.payload;
     if (bloomThemeKeys.includes(key)) {
+      localStorage.setItem(key,String(value));
       applyThemeFromStorage();
     }
   });

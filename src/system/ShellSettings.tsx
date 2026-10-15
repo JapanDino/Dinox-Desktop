@@ -1,4 +1,5 @@
 import {tr,trError} from '../i18n/core';
+import {tx} from '../desktopText';
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Monitor } from 'lucide-react';
@@ -28,14 +29,14 @@ export function ShellSettings() {
     } };
     return <div className="setting-group">
     <SettingRow icon={Monitor} label={tr("Панель задач Windows")} desc={tr("Выберите одну панель или оставьте обе")}>
-      <select className="settings-select" aria-label={tr("Режим панели Windows")} value={!recovered && mode === 'replace' ? 'replace' : 'compatible'} onChange={e => void change(e.target.value)}>
+      <select className="settings-select" aria-label={tr("Режим панели Windows")} value={mode === 'replace' ? 'replace' : 'compatible'} onChange={e => void change(e.target.value)}>
         <option value="compatible">{tr("Обе панели")}</option>
         <option value="replace">{tr("Только Dinox (тест)")}</option>
       </select>
     </SettingRow>
-    <p className="panel-mode-hint" role="status">{tr(status.restorePending ? 'Возвращаем панель Windows…' : status.replacing ? 'Панель Windows скрыта. Работает док Dinox.' : mode === 'replace' && !recovered ? 'Windows пока видна: ожидаем готовности дока и защиты восстановления.' : 'Панель Windows остаётся видна. Для замены выберите «Только Dinox».')}</p>
-    <p style={{ padding: '4px 18px 15px', fontSize: 12, lineHeight: 1.6, opacity: .75 }}>{tr("Ctrl+Alt+B возвращает панель Windows. После сбоя замена отключается. Открытие скрытых значков через Windows также возвращает совместимый режим.")}</p>
-    {recovered && <p role="status" style={{ padding: '0 18px 15px' }}>{tr("После сбоя включён совместимый режим. Замена панели отключена до повторного выбора.")}</p>}
+    <p className="panel-mode-hint" role="status">{tr(status.restorePending ? 'Возвращаем панель Windows…' : status.replacing ? 'Панель Windows скрыта. Работает док Dinox.' : mode === 'replace' ? 'Windows пока видна: ожидаем готовности дока и защиты восстановления.' : 'Панель Windows остаётся видна. Для замены выберите «Только Dinox».')}</p>
+    <p style={{ padding: '4px 18px 15px', fontSize: 12, lineHeight: 1.6, opacity: .75 }}>{tx('Ctrl+Alt+B возвращает панель Windows. После временного сбоя выбранный режим восстановится, когда обе панели устойчиво отвечают. Открытие скрытых значков через Windows возвращает режим «Обе панели».','Ctrl+Alt+B restores the Windows taskbar. After a temporary interruption, your selected mode resumes once both panels respond reliably. Opening the Windows tray switches to Both taskbars.')}</p>
+    {recovered && <p role="status" style={{ padding: '0 18px 15px' }}>{tx('Windows временно возвращена для восстановления. Выбор панели сохранён; если восстановление не происходит, выберите «Только Dinox» повторно.','Windows is temporarily restored for recovery. Your preference is preserved; if recovery does not finish, select Only Dinox again.')}</p>}
     {error && <p role="alert">{trError(error)}</p>}
   </div>;
 }

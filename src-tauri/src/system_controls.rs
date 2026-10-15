@@ -7,6 +7,7 @@ use crate::state::*;
 #[derive(Serialize)]
 pub struct Status {
     volume: Option<u32>, muted: bool, brightness: Option<u32>,
+    brightness_target: Option<&'static str>,
     battery: Option<i32>, charging: bool, plugged_in: bool, language: String,
 }
 
@@ -37,7 +38,8 @@ pub async fn system_controls_status() -> Result<Status, String> {
         Status {
             volume: CURRENT_AUDIO_READY.load(Ordering::Relaxed).then(|| CURRENT_VOLUME.load(Ordering::Relaxed).min(100)),
             muted: CURRENT_MUTED.load(Ordering::Relaxed),
-            brightness: BRIGHTNESS_AVAILABLE.load(Ordering::Relaxed).then(|| CURRENT_BRIGHTNESS.load(Ordering::Relaxed).min(100)),
+            brightness: crate::brightness::read(),
+            brightness_target: crate::brightness::target(),
             battery, charging: battery_status == Some(BatteryStatus::Charging),
             plugged_in: PowerManager::PowerSupplyStatus().map(|s| s != PowerSupplyStatus::NotPresent).unwrap_or(false),
             language,

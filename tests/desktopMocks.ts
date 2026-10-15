@@ -1,8 +1,10 @@
 import {calendarSyncMock} from './calendarSyncMocks';
+import {aiLimitsMock} from './aiLimitsMocks';
 import type {AudioDevice} from '../src/system/MixerPanel';
-const devices:AudioDevice[]=[{id:'speakers',name:'Studio Speakers',default:true,volume:.64,muted:false,sessions:[{id:'music',name:'Музыка',volume:.76,muted:false},{id:'telegram',name:'Telegram',volume:.38,muted:false},{id:'browser',name:'Браузер',volume:.55,muted:true}]},{id:'headphones',name:'Wireless Headphones',default:false,volume:.42,muted:false,sessions:[]}];
+const devices:AudioDevice[]=[{id:'speakers',name:'Studio Speakers',default:true,volume:.64,muted:false,sessions:[{id:'music',name:'Музыка',volume:.76,muted:false,process_id:7001,process_started_at:'133777000000000001',route_supported:true,route_device_id:null,route_error:null},{id:'telegram',name:'Telegram',volume:.38,muted:false,process_id:7002,process_started_at:'133777000000000002',route_supported:true,route_device_id:null,route_error:null},{id:'browser',name:'Браузер',volume:.55,muted:true,process_id:7003,process_started_at:'133777000000000003',route_supported:true,route_device_id:null,route_error:null}]},{id:'headphones',name:'Wireless Headphones',default:false,volume:.42,muted:false,sessions:[]}];
 let widgetMedia={title:'Evening walk',artist:'Dinox · демонстрационный трек',is_playing:true,has_media:true,artwork:null};
 export async function desktopMock(command:string,args:any,settings:Record<string,any>,emit:(name:string,value:unknown)=>void){
+ const limits=await aiLimitsMock(command,args);if(limits)return limits;
  const calendarResult=await calendarSyncMock(command,args,emit);if(calendarResult)return calendarResult;
  const q=new URLSearchParams(location.search);const done=(value:unknown=null)=>({value});
  if(command==='notes_open_window'){window.dispatchEvent(new CustomEvent('dinox-demo-note-window',{detail:args.id}));return done();}
@@ -15,7 +17,17 @@ export async function desktopMock(command:string,args:any,settings:Record<string
   document.documentElement.dataset.widgetMediaAction=args.action;emit('media-update',widgetMedia);return done();
  }
  if(command==='widgets_open_target'){if(q.has('open-error'))throw 'Target unavailable';document.documentElement.dataset.widgetTarget=args.target;return done();}
- if(command==='mixer_snapshot'){if(q.has('mixer-error'))throw 'Audio unavailable';return done(structuredClone(q.has('mixer-empty')?[]:devices));}
+ if(command==='mixer_snapshot'){if(q.has('mixer-error'))throw 'Audio unavailable';const value=structuredClone(q.has('mixer-empty')?[]:devices);if(q.has('mixer-route-unsupported'))for(const d of value)for(const s of d.sessions){s.route_supported=false;s.route_error='App routing is not supported on this Windows build';}return done(value);}
+ if(command==='mixer_route_app'){
+  await new Promise(resolve=>setTimeout(resolve,120));
+  if(q.has('mixer-write-error')||q.has('mixer-route-error'))throw 'Не удалось применить выход приложения. Предыдущее значение сохранено.';
+  const device=devices.find(d=>d.id===args.sourceDeviceId),session=device?.sessions.find(s=>s.id===args.sessionId);
+  if(!session||session.process_id!==args.processId||session.process_started_at!==args.processStartedAt)throw 'Audio session changed';
+  if(args.targetDeviceId!==null&&!devices.some(d=>d.id===args.targetDeviceId))throw 'Device disconnected';
+  session.route_device_id=args.targetDeviceId;
+  document.documentElement.dataset.mixerRoute=JSON.stringify(args);
+  return done({state:'preference_confirmed',device_id:args.targetDeviceId,stream_on_target:args.targetDeviceId===null||args.targetDeviceId===device?.id,process_id:args.processId});
+ }
  if(command==='mixer_set'||command==='mixer_default_device'){
   await new Promise(resolve=>setTimeout(resolve,100));if(q.has('mixer-write-error'))throw 'Device disconnected';
   const device=devices.find(d=>d.id===args.deviceId);if(!device)throw 'Unknown device';

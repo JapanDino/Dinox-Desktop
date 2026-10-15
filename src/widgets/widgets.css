@@ -103,4 +103,69 @@ html:has(.widget-board),body:has(.widget-board),#root:has(.widget-board){backgro
 .wb-personal-grid>.wb-focus{order:var(--wb-order-focus);grid-column:span var(--wb-span-focus)}
 @media(max-width:1100px){.wb-personal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:740px){.wb-personal-grid{grid-template-columns:1fr}.wb-personal-grid.wb-week-expanded>.wb-calendar{grid-column:1}.wb-personal-grid>.wb-card{grid-column:1;padding:18px}.wb-personal-grid>.wb-calendar{min-height:440px}}
+/* Content accents stay local, while tools and labels share the shell palette. */
+html[data-bloom-unified] .widget-board :is(.wb-card>header>span,.wb-save-status,.wb-save-error,.wb-due,.wb-card-empty,.wb-task-list small,.wb-project-list small,.wb-calendar-controls>span,.wb-month>span,.wb-day h3,.wb-countdown>span){color:var(--dn-muted)}
+html[data-bloom-unified] .widget-board :is(.wb-save-error,.wb-error,.wb-task-list small.overdue){color:var(--dn-error)}
+html[data-bloom-unified] .widget-board :is(.wb-segments,.wb-progress){background:var(--dn-input);border:1px solid var(--dn-border)}
+html[data-bloom-unified] .widget-board .wb-progress i{background:var(--dn-text)}
+html[data-bloom-unified] .widget-board .wb-event:hover{background:var(--dn-hover)!important;color:var(--dn-text)}
+html[data-bloom-unified] .widget-board :is(.wb-task-list button,.wb-project-list li>button:last-child,.wb-due input){color:var(--dn-muted)}
+html[data-bloom-unified] .widget-board .wb-timeline{--cal-text:var(--dn-text);--cal-muted:var(--dn-muted);--cal-accent:var(--dn-focus)}
+html[data-bloom-unified] .widget-board .wb-timeline :is(.cal-time-event,.cal-span-event){color:var(--dn-text);background:var(--dn-control);border-left-color:var(--event-color)}
+html[data-bloom-unified] .widget-board .wb-timeline .cal-week-head button{background:transparent;border:0;color:var(--dn-muted)}
+html[data-bloom-unified] .widget-board .wb-timeline .cal-week-head button.today strong{background:var(--dn-text);color:var(--dn-surface)}
+html[data-bloom-unified] .widget-board .wb-month button.today:not(.selected){box-shadow:inset 0 0 0 1px var(--dn-focus)}
+html[data-bloom-unified] .widget-board :is(.wb-card>header>span,.wb-save-status,.wb-save-error,.wb-hint,.wb-calendar-controls>span,.wb-task-list small,.wb-project-list small){font-size:12px;line-height:1.5}
 @media(max-width:420px){.wb-choice-row{align-items:flex-start;flex-direction:column}.wb-choice-row>div:last-child{align-self:flex-end}}
+
+/* A workspace, not a presentation dashboard: compact tools around real content. */
+.widget-board{font-family:var(--dn-font,"Segoe UI Variable","Segoe UI",sans-serif);--wb-gutter:clamp(18px,3vw,48px)}
+.wb-top{padding:24px 0 20px;align-items:center}
+.wb-top h1{font-size:26px;line-height:1.25;letter-spacing:-.4px;margin:4px 0 6px}
+.wb-brand{display:none}
+.wb-tools{align-self:center;margin-top:0}
+.wb-tools button{min-height:34px;min-width:34px;border-radius:8px}
+.wb-card,.wb-personal-grid>.wb-card{padding:18px;border-radius:12px}
+.wb-card>header{margin-bottom:14px}
+.wb-card h2{font-size:15px;line-height:1.4;font-weight:600}
+.wb-personal-grid{gap:16px}
+.wb-personal-grid .wb-countdown{font-size:44px;letter-spacing:-1px;line-height:1.2}
+.wb-top p,.wb-footer{font-size:12px;line-height:1.5}
+.wb-detail,.wb-preferences{border-radius:18px;padding:20px}
+.wb-detail h2{font-size:20px;line-height:1.4}
+.wb-album{border-radius:8px}
+.wb-track{gap:12px}
+.wb-track h3{font-size:16px;font-weight:600}
+.wb-month>button{border-radius:8px}
+html[data-bloom-unified] .widget-board :is(.wb-card,.wb-detail,.wb-preferences){background:var(--dn-raised);border-color:var(--dn-border)}
+html[data-bloom-unified] .widget-board :is(.wb-brand,.wb-top p,.wb-footer,.wb-footer small,.wb-key,.wb-event small,.wb-track p){color:var(--dn-muted)}
+html[data-bloom-unified] .widget-board :is(.wb-tools button,.wb-choice-row button){background:var(--dn-control);color:var(--dn-text);border-color:var(--dn-border)}
+html[data-bloom-unified] .widget-board :is(.wb-day,.wb-task-list li,.wb-project-list li,.wb-footer,.wb-choice-row){border-color:var(--dn-border)}
+html[data-bloom-unified] .widget-board .wb-focus-actions .wb-primary{background:var(--dn-text);color:var(--dn-surface)}
+html[data-bloom-unified] .widget-board .wb-album{background:var(--dn-control);color:var(--dn-muted)}
+html[data-bloom-unified] .widget-board .wb-month button.outside{color:var(--dn-muted)}
+html[data-bloom-unified] .widget-board .wb-segments button[aria-pressed=true]{background:var(--dn-text);color:var(--dn-surface)}
+@media(max-width:740px){.wb-top{padding:18px 0;align-items:flex-start}.wb-top h1{font-size:22px}.wb-card,.wb-personal-grid>.wb-card{padding:16px}.wb-tools{align-self:flex-start}}
+@media(max-width:420px){.widget-board{--wb-gutter:12px}.wb-top h1{font-size:20px}.wb-tools button{min-width:30px;padding:6px}.wb-card,.wb-personal-grid>.wb-card{padding:14px}}
+
+/* Calendar tasks belong to the task widget, rather than to a second card. */
+.widget-board .wb-tasks>.cs-tasks{margin:14px 0 0;padding:14px 0 0;border:0;border-top:1px solid var(--dn-border,#333);border-radius:0;background:transparent}
+.widget-board .wb-tasks>.cs-tasks h3{font-size:15px;line-height:1.4}
+.widget-board .wb-tasks>.cs-tasks header>button{min-height:32px;width:32px;padding:5px}
+.widget-board .wb-tasks>.cs-tasks .cs-task-filters{margin:10px 0;gap:8px}
+.widget-board .wb-tasks>.cs-tasks .cs-task-filters>input{padding:8px 10px}
+.widget-board .wb-tasks>.cs-tasks .cs-empty{padding:6px 0;font-size:12px;line-height:1.55}
+.widget-board .wb-tasks>.wb-card-empty{padding:6px 0 8px;line-height:1.55}
+.widget-board .wb-tasks>.wb-save-status,.widget-board .wb-tasks>.wb-save-error{margin-top:8px!important}
+.widget-board .wb-tasks>header{margin-bottom:8px}
+.widget-board .wb-tasks>.wb-hint{margin:0 0 8px!important}
+
+.wb-personal-grid.wb-compact-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.wb-footer{justify-content:flex-end;padding:8px 0 12px}
+.wb-footer>span{margin-right:auto}
+@media(max-width:740px){.wb-personal-grid.wb-compact-grid{grid-template-columns:1fr}}
+
+/* Six-row months must leave real room for the selected day's agenda. Let the
+   board scroll the card; only a long daily event list needs an inner scrollbar. */
+.wb-personal-grid:not(.wb-week-expanded)>.wb-calendar{max-height:none;overflow:hidden}
+.wb-personal-grid:not(.wb-week-expanded) .wb-day{flex:0 0 auto;min-height:110px;max-height:180px;margin-top:16px;padding-top:12px;overflow:auto;overscroll-behavior:contain}

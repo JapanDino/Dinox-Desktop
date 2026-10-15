@@ -1,3 +1,4 @@
+import {dueReminders, parseDismissedReminders, reminderKey} from '../notifications/reminders';
 import {tr} from '../i18n/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
@@ -90,39 +91,37 @@ export function useCalendar(from: number, to: number, eco: boolean, cachedOnly =
     }, [parseInput, from, to]);
     return { range: {from, to}, sources, events,tasks, errors: { ...errors, ...parseErrors }, busy, refresh, load };
 }
-export function useReminders(events: CalendarEvent[], minutes: number) {
+export function useReminders(events: CalendarEvent[], minutes: number, suppressed = false) {
     const [active, setActive] = useState<CalendarEvent | null>(null);
     const [tick, setTick] = useState(Date.now());
-    const dismissed = useRef<Record<string, number>>((() => { try {
-        return JSON.parse(localStorage.getItem('bloom-calendar-dismissed') || '{}');
-    }
-    catch {
-        return {};
-    } })());
-    const snoozed = useRef<Record<string, number>>({});
-    const persist = () => localStorage.setItem('bloom-calendar-dismissed', JSON.stringify(dismissed.current));
+    const dismissed = useRef<Record<string,number>>((() => { try { return parseDismissedReminders(localStorage.getItem('bloom-calendar-dismissed')); } catch { return {}; } })());
+    const snoozed = useRef<Record<string,number>>({});
+    const persist = () => { try { localStorage.setItem('bloom-calendar-dismissed', JSON.stringify(dismissed.current)); } catch { /* Session dismissal must work with an unavailable cache. */ } };
     useEffect(() => { if (!minutes || !events.length) return; const timer = setInterval(() => setTick(Date.now()), 15000); return () => clearInterval(timer); }, [minutes, events.length]);
+    const [queueRevision, setQueueRevision] = useState(0);
+    const due = dueReminders(events, minutes, dismissed.current, snoozed.current, tick, suppressed);
     useEffect(() => {
         const now = Date.now();
-        for (const [id, end] of Object.entries(dismissed.current))
-            if (end < now - 86400000)
-                delete dismissed.current[id];
-        if (!minutes) {
-            setActive(null);
-            return;
-        }
-        if (active && (!events.some(e => e.id === active.id && e.start === active.start) || active.end <= now))
-            setActive(null);
-        const candidate = events.find(e => !e.allDay && e.end > now && e.start <= now + minutes * 60000 && (e.start > now - 5 * 60000 || !!snoozed.current[e.id]) && dismissed.current[e.id] !== e.start && (!snoozed.current[e.id] || snoozed.current[e.id] <= now));
-        if (!active && candidate)
-            setActive(candidate);
-    }, [events, minutes, tick, active]);
-    return { active, dismiss: () => { if (active) {
-            dismissed.current[active.id] = active.start;
-            persist();
-            setActive(null);
-        } }, snooze: () => { if (active) {
-            snoozed.current[active.id] = Date.now() + 5 * 60000;
-            setActive(null);
-        } } };
+        for (const [key, end] of Object.entries(dismissed.current)) if (end < now - 86400000) delete dismissed.current[key];
+        const candidates = dueReminders(events, minutes, dismissed.current, snoozed.current, now, suppressed);
+        setActive(previous => previous && candidates.some(event => reminderKey(event) === reminderKey(previous)) ? previous : candidates[0] ?? null);
+    }, [events, minutes, tick, suppressed, queueRevision]);
+    const dismiss = useCallback(() => {
+        if (!active) return;
+        dismissed.current[reminderKey(active)] = active.end;
+        delete snoozed.current[reminderKey(active)];
+        setActive(null);
+        setTick(Date.now());
+        setQueueRevision(value => value + 1);
+        persist();
+    }, [active]);
+    const snooze = useCallback(() => {
+        if (!active) return;
+        snoozed.current[reminderKey(active)] = Date.now() + 5 * 60000;
+        setActive(null);
+        setTick(Date.now());
+        setQueueRevision(value => value + 1);
+    }, [active]);
+    useEffect(() => { if (!active || suppressed) return; const timer = setTimeout(dismiss, 20000); return () => clearTimeout(timer); }, [active, suppressed, dismiss]);
+    return {active: suppressed ? null : active, pendingCount: due.length, dismiss, snooze};
 }

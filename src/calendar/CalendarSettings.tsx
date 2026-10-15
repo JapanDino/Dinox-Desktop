@@ -1,6 +1,8 @@
 import {tr,trError,locale} from '../i18n/core';
 import {tx} from '../desktopText';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useId } from 'react';
+import {createPortal} from 'react-dom';
+import {useDialogFocus} from '../hooks/useDialogFocus';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { CalendarDays, Plus, Trash2, ExternalLink, ChevronDown, Check } from 'lucide-react';
@@ -14,6 +16,11 @@ export const colors = ['#b7a6ff', '#8dd6b0', '#92bdff', '#efb782', '#ee99b1', '#
 export function CalendarSettings() {
     const [sources, setSources] = useState<CalendarSource[]>([]), [name, setName] = useState(''), [url, setUrl] = useState(''), [color, setColor] = useState(colors[0]);
     const [error, setError] = useState(''), [busy, setBusy] = useState(false), [editing, setEditing] = useState<string | null>(null), [help, setHelp] = useState(false);
+    const [removing, setRemoving] = useState<CalendarSource|null>(null);
+    const removeRef=useRef<HTMLDivElement>(null),removeTitle=useId();
+    const settingsRef=useRef<HTMLDivElement>(null);
+    const closeRemoval=()=>{if(!busy)setRemoving(null);};
+    useDialogFocus(removeRef,!!removing,closeRemoval);
     const [provider, setProvider] = useState<Provider>('google');
     const [lead, saveLead] = usePersonalSetting('bloom-calendar-reminder', '10');
     const [density, saveDensity] = usePersonalSetting('bloom-calendar-density', 'comfortable');
@@ -23,15 +30,17 @@ export function CalendarSettings() {
     const apply = async (task: () => Promise<unknown>) => { setBusy(true); setError(''); try {
         await task();
         await load();
+        return true;
     }
     catch (e) {
         setError(String(e));
+        return false;
     }
     finally {
         setBusy(false);
     } };
     const reset = () => { setName(''); setUrl(''); setEditing(null); setColor(colors[0]); };
-    return <div className="calendar-settings"><CalendarAccounts/>
+    return <div ref={settingsRef} className="calendar-settings"><CalendarAccounts/>
     <div className="setting-group-label">{tr("Календарь и расписание")}</div>
     <div className="setting-group">
       <div className="cal-connection-intro"><CalendarDays size={22}/><div><strong>{tr("Твоя неделя в Dinox")}</strong><p>{tr("Google, Яндекс, Outlook и другие ICS-подписки. Только просмотр; сохранённые события доступны без интернета.")}</p></div></div>
@@ -39,8 +48,7 @@ export function CalendarSettings() {
       {sources.map(s => <div className="cal-source-row" key={s.id}>
         <input type="checkbox" aria-label={tr("Показывать {0}", s.name)} checked={s.enabled} disabled={busy} onChange={e => void apply(() => invoke('calendar_save', { id: s.id, name: s.name, color: s.color, enabled: e.target.checked, url: null }))}/>
         <span className="cal-dot" style={{ background: s.color }}/><button className="cal-source-name" onClick={() => { setEditing(s.id); setName(s.name); setColor(s.color); setUrl(''); }}>{s.name}<small>{s.checked ? tr("Проверен {0}", new Date(s.checked * 1000).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })) : tr("Ещё не обновлялся")}</small></button>
-        <button className="cal-icon-button" aria-label={tr("Удалить календарь {0}", s.name)} disabled={busy} onClick={() => void apply(() => invoke('calendar_remove', { id: s.id })).then(() => { if (editing === s.id)
-            reset(); })}><Trash2 size={14}/></button>
+        <button className="cal-icon-button" aria-label={tr("Удалить календарь {0}", s.name)} disabled={busy} onClick={() => {setError('');setRemoving(s);}}><Trash2 size={14}/></button>
       </div>)}
       <form className="cal-source-form" onSubmit={e => { e.preventDefault(); void apply(async () => { await invoke('calendar_save', { id: editing, name, color, enabled: sources.find(s => s.id === editing)?.enabled ?? true, url: url.trim() ? subscriptionUrl(url) : null }); reset(); }); }}>
         <div className="cal-providers" aria-label={tr('Сервис календаря')}>{Object.entries(providers).map(([id, item]) => <button type="button" key={id} aria-pressed={provider === id} onClick={() => { setProvider(id as Provider); setHelp(true); }}>{tr(item.name)}</button>)}</div>
@@ -58,5 +66,15 @@ export function CalendarSettings() {
       <SettingRow icon={CalendarDays} label={tr("Плотность расписания")} desc={tr("Высота часовых интервалов")}><select className="settings-select" aria-label={tr("Плотность расписания")} value={density} onChange={e => saveDensity(e.target.value).catch(e => setError(String(e)))}><option value="comfortable">{tr("Комфортная")}</option><option value="compact">{tr("Компактная")}</option></select></SettingRow>
       <SettingRow icon={CalendarDays} label={tr("Акцент календаря")} desc={tr("Выбранный день и элементы управления")}><div className="cal-swatches">{colors.map(c => <button key={c} aria-label={tr("Акцент {0}", c)} aria-pressed={accent === c} style={{ background: c }} onClick={() => saveAccent(c).catch(e => setError(String(e)))}>{accent === c && <Check size={13}/>}</button>)}</div></SettingRow>
     </div>
+    {removing&&createPortal(<div className="cal-confirm-backdrop" onClick={closeRemoval}>
+      <div ref={removeRef} className="cal-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby={removeTitle} onClick={event=>event.stopPropagation()}>
+        <h3 id={removeTitle}>{tx('Отключить подписку?', 'Disconnect subscription?')}</h3>
+        <p><strong>{removing.name}</strong></p>
+        <p>{tx('Подписка исчезнет из Dinox. События в исходном календаре останутся. Для повторного подключения понадобится секретная ссылка ICS.', 'The subscription will be removed from Dinox. Original calendar events remain. Reconnecting will require the secret ICS link.')}</p>
+        {error&&<p className="cal-error" role="alert">{trError(error)}</p>}
+        {busy&&<p role="status">{tx('Отключение…','Disconnecting…')}</p>}
+        <div className="cal-confirm-actions"><button type="button" className="cal-text-button" disabled={busy} onClick={closeRemoval}>{tr('Отмена')}</button><button type="button" className="cal-primary" disabled={busy} onClick={async()=>{const id=removing.id;if(await apply(()=>invoke('calendar_remove',{id}))){if(editing===id)reset();setRemoving(null);requestAnimationFrame(()=>{const target=settingsRef.current?.querySelector<HTMLElement>('.cal-source-name, .cal-source-form input');target?.focus();});}}}>{tx('Отключить подписку','Disconnect subscription')}</button></div>
+      </div>
+    </div>,document.body)}
   </div>;
 }

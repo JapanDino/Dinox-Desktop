@@ -1,4 +1,5 @@
 import {desktopMock} from './desktopMocks';
+import {systemToolsMock} from './systemToolsMocks';
 import {telegramProxyMock} from './telegramProxyMocks';
 import {DesktopDemo} from './DesktopDemo';
 import {WorkspaceDemo} from './WorkspaceDemo';
@@ -25,6 +26,7 @@ function previewRoot(){return (window as any).__BLOOM_PREVIEW_ROOT__??=((window 
 let nextId=1;
 const callbacks=new Map<number,Function>(),listeners=new Map<number,{event:string;handler:number}>();
 const settings:Record<string,string>={'bloom-calendar-view':'week','bloom-language':localStorage.getItem('bloom-language')||'ru',...(JSON.parse(localStorage.getItem('dinox-v4-demo-settings')||'{}'))};
+if(new URLSearchParams(location.search).has('app')&&new URLSearchParams(location.search).has('ai-limits-demo'))Object.assign(settings,{'dinox-limits-codex':'true','dinox-limits-claude':'true'});
 if(new URLSearchParams(location.search).get('desktop')==='widgets')settings['dinox-widgets-enabled']??='true';
 // Promotional captures use only deterministic, synthetic settings and fixtures.
 if(new URLSearchParams(location.search).has('promo')){
@@ -46,9 +48,15 @@ const demoApps=[
  {name:'Музыка',path:'C:/Apps/music.exe',icon:demoIcon('<path d="M13 23V9l13-3v14M13 13l13-3"/><ellipse cx="9" cy="24" rx="4" ry="3"/><ellipse cx="22" cy="21" rx="4" ry="3"/>')},
  {name:'Редактор',path:'C:/Apps/editor.exe',icon:demoIcon('<path d="m12 10-7 6 7 6m8-12 7 6-7 6m-3-15-3 18"/>')},
 ].map((a,i)=>({...a,is_running:i<3,hwnd:i<3?5001+i:null,executable:a.path}));
+// Opt-in visual captures can use locally exported application artwork. The
+// ignored images and this fixture are never part of the installed application.
+if(new URLSearchParams(location.search).has('shell-polish')){
+ const names=['explorer','telegram','browser','notes','music'];
+ demoApps.forEach((app,index)=>{if(names[index])app.icon=`/output/playwright/panel-demo-icons/${names[index]}.png`;});
+}
 let demoNotices:any[]=[];
 const demoSend=()=>{demoNotices=[{id:++nextId,app_id:'TelegramDesktop',app_name:'Telegram',title:'Команда проекта',body:'Макет готов. Посмотри обновлённый календарь — обсудим вечером.',created:Date.now()},...demoNotices].slice(0,50);emit('bloom-notifications-changed',null);};
-const demoPins=(personal:boolean)=>{const stored=new URLSearchParams(location.search).has('promo')?null:localStorage.getItem('dinox-v4-demo-pins-'+personal);return stored?JSON.parse(stored):demoApps.slice(0,personal?4:2);};
+const demoPins=(personal:boolean)=>{const stored=new URLSearchParams(location.search).has('promo')?null:localStorage.getItem('dinox-v4-demo-pins-'+personal);return stored?JSON.parse(stored):demoApps.slice(0,new URLSearchParams(location.search).has('shell-polish')?5:personal?4:2);};
 const settingsChannel=new BroadcastChannel('dinox-v4-preview-settings');
 settingsChannel.onmessage=({data})=>{settings[data.key]=data.value;emit('settings-changed',data);};
 if(new URLSearchParams(location.search).has('legacy'))settings['bloom-dock-design']=JSON.stringify({background:'#403060',accent:'#eab0fa',opacity:65});
@@ -84,6 +92,7 @@ let wifiConnected='demo-home';
 let wifiEnabled=true;
 function emit(event:string,payload:unknown){for(const x of listeners.values())if(x.event===event)callbacks.get(x.handler)?.({event,payload});}
 (window as any).__TAURI_INTERNALS__={transformCallback:(fn:Function)=>{const id=nextId++;callbacks.set(id,fn);return id;},invoke:async(command:string,args:any)=>{
+ const systemResult=await systemToolsMock(command,args);if(systemResult)return systemResult.value;
  const proxyResult=await telegramProxyMock(command,args);if(proxyResult)return proxyResult.value;
  const desktopResult=await desktopMock(command,args,settings,emit);if(desktopResult)return desktopResult.value;
  if(command==='keyboard_layout_snapshot')return {target:new URLSearchParams(location.search).has('layout-no-target')?null:'demo-target',target_name:'Untitled — Notepad',layouts:[{id:'ru',label:'RU',name:'Русский',active:systemStatus.language==='RU'},{id:'en',label:'EN',name:'English (US)',active:systemStatus.language==='EN'}]};
@@ -120,8 +129,8 @@ function emit(event:string,payload:unknown){for(const x of listeners.values())if
    if(args.action==='mute'){systemStatus.muted=!systemStatus.muted;emit('volume-change',{volume:(systemStatus.volume??0)/100,is_muted:systemStatus.muted});}
    return;
  }
- if(command==='set_volume'){systemStatus.volume=Math.round(args.volume*100);document.documentElement.dataset.systemVolume=String(args.volume);emit('volume-change',{volume:args.volume,is_muted:systemStatus.muted});return;}
- if(command==='set_brightness'){systemStatus.brightness=args.brightness;document.documentElement.dataset.systemBrightness=String(args.brightness);emit('brightness-change',{brightness:args.brightness});return;}
+ if(command==='set_volume'){systemStatus.volume=Math.round(args.volume*100);document.documentElement.dataset.systemVolume=String(args.volume);emit('volume-change',{volume:args.volume,is_muted:systemStatus.muted});return args.volume;}
+ if(command==='set_brightness'){systemStatus.brightness=args.brightness;document.documentElement.dataset.systemBrightness=String(args.brightness);emit('brightness-change',{brightness:args.brightness});return args.brightness;}
  if(command==='notification_request_access')return 'package_required';
  if(command==='notification_snapshot'){if(new URLSearchParams(location.search).has('notification-error'))throw 'Демонстрационная ошибка доступа Windows';return demoNotices;}
  if(command==='open_bloom_notifications'){emit('bloom-open-notifications',null);return;}
@@ -136,6 +145,7 @@ function emit(event:string,payload:unknown){for(const x of listeners.values())if
  }
  if(command==='get_installed_apps')return demoApps;
  if(command==='open_app'||command==='focus_window'||command==='show_start_menu'){document.documentElement.dataset.demoLaunch=JSON.stringify(args||command);const name=demoApps.find(a=>a.hwnd===args?.hwnd||a.path===args?.appName)?.name||'Windows';window.dispatchEvent(new CustomEvent('bloom-demo-action',{detail:name}));return;}
+ if(command==='open_search_settings'){location.assign('/personal-preview.html?settings&search-settings');return;}
  if(command==='open_notification_settings'||command==='open_dock_settings'||command==='open_settings_window'){window.dispatchEvent(new CustomEvent('bloom-demo-page',{detail:command==='open_notification_settings'?'notices':'dock'}));return;}
  if(command==='open_notification_center'){window.dispatchEvent(new CustomEvent('bloom-demo-action',{detail:'Windows'}));return;}
 
@@ -144,7 +154,8 @@ function emit(event:string,payload:unknown){for(const x of listeners.values())if
  if(command==='get_custom_icons')return {};
  if(command==='get_app_icon')return demoApps.find(a=>a.path===args.path)?.icon??null;
  if(command==='plugin:window|is_visible')return true;
- if(command==='plugin:autostart|is_enabled')return false;
+ if(command==='plugin:autostart|is_enabled')return localStorage.getItem('dinox-demo-autostart')==='true';
+ if(command==='plugin:autostart|enable'||command==='plugin:autostart|disable'){localStorage.setItem('dinox-demo-autostart',String(command.endsWith('|enable')));return;}
  if(command==='check_for_updates'){
   const query=new URLSearchParams(location.search);
   if(query.has('update-error'))throw 'Update server unavailable';
@@ -162,10 +173,15 @@ function emit(event:string,payload:unknown){for(const x of listeners.values())if
  if(command==='load_settings')return settings;
  if(command==='plugin:app|version')return packageInfo.version;
  if(command==='get_update_state')return {available:false};
- if(command==='get_network_speed')return [0,0];
+ // Synthetic readings for browser previews, never measurements of this PC.
+ if(command==='get_cpu_usage')return 16;
+ if(command==='get_ram_usage')return 47;
+ if(command==='get_disk_space')return 86;
+ if(command==='get_network_speed')return [12.4,68.2];
  if(command==='get_volume')return .5;
  if(command==='get_brightness')return 50;
  if(command.startsWith('get_'))return 0;
+ if(command==='save_settings'){if(new URLSearchParams(location.search).has('save-error'))throw 'Не удалось сохранить настройку.';Object.assign(settings,args.values);localStorage.setItem('dinox-v4-demo-settings',JSON.stringify(settings));for(const[key,value]of Object.entries(args.values)){emit('settings-changed',{key,value});settingsChannel.postMessage({key,value});}return;}
  if(command==='save_setting'){if(new URLSearchParams(location.search).has('save-error'))throw 'Не удалось сохранить настройку.';document.documentElement.dataset.savedSetting=JSON.stringify(args);settings[args.key]=args.value;localStorage.setItem('dinox-v4-demo-settings',JSON.stringify(settings));emit('settings-changed',args);if(args.key==='dinox-search-shortcut')emit('launcher-shortcut-status',args.value!=='off'&&!new URLSearchParams(location.search).has('shortcut-conflict'));if(args.key==='dinox-widgets-shortcut'||args.key==='dinox-widgets-enabled')emit('widgets-shortcut-status',settings['dinox-widgets-enabled']==='true'&&settings['dinox-widgets-shortcut']!=='off'&&!new URLSearchParams(location.search).has('widget-conflict'));settingsChannel.postMessage(args);return;}
  if(command==='calendar_list')return sources;
  if(command==='calendar_refresh'){if(offline)throw 'Нет подключения к интернету. Сохранённые события доступны.';return {...sources.find(s=>s.id===args.id)!,checked:Date.now()/1000};}
@@ -208,20 +224,27 @@ if(new URLSearchParams(location.search).has('desktop')){
  previewRoot().render(<DesignPreview/>);
 } else if(new URLSearchParams(location.search).has('settings')) {
  (window as any).__TAURI_INTERNALS__.metadata={currentWindow:{label:'settings'},currentWebview:{label:'settings'}};
- import('../src/Settings').then(()=>{});
+ import('../src/Settings').then(()=>{if(new URLSearchParams(location.search).has('search-settings'))setTimeout(()=>emit('open-search-settings',null),150);});
 } else if(new URLSearchParams(location.search).has('dock')) {
  (window as any).__TAURI_INTERNALS__.metadata={currentWindow:{label:'dock'},currentWebview:{label:'dock'}};
  import('../src/Dock').then(({default:Dock})=>previewRoot().render(<><button style={{position:'fixed',top:30,left:30,zIndex:1000}} onClick={()=>emit('dock-attention',5001)}>Тест внимания</button><Dock/></>));
 } else if(new URLSearchParams(location.search).has('app')) {
  (window as any).__TAURI_INTERNALS__.metadata={currentWindow:{label:'main'},currentWebview:{label:'main'}};
- import('../src/App').then(({default:App})=>previewRoot().render(<><button style={{position:'fixed',left:20,top:100,zIndex:1000}} onClick={()=>{settings['bloom-notifications']=JSON.stringify({enabled:true});emit('settings-changed',{key:'bloom-notifications',value:settings['bloom-notifications']});setTimeout(()=>emit('bloom-preview-notification',{...sampleNotice,created:Date.now()}),100);}}>Демо-карточка</button><App/></>));
+ import('../src/App').then(({default:App})=>previewRoot().render(<><button style={{position:'fixed',right:16,bottom:16,zIndex:1000,fontSize:11}} onClick={()=>{settings['bloom-notifications']=JSON.stringify({enabled:true});emit('settings-changed',{key:'bloom-notifications',value:settings['bloom-notifications']});setTimeout(()=>emit('bloom-preview-notification',{...sampleNotice,created:Date.now()}),100);}}>Демо-карточка</button><App/>{new URLSearchParams(location.search).has('with-dock')&&<div className="combined-preview-dock" style={{position:'fixed',inset:0,pointerEvents:'none'}}><Dock/><style>{`.combined-preview-dock .dock-container,.combined-preview-dock .dock-container>div{pointer-events:none}.combined-preview-dock .dock,.combined-preview-dock .system-panel,.combined-preview-dock .context-menu,.combined-preview-dock .dock-pin-backdrop{pointer-events:auto}`}</style></div>}</>));
  document.body.style.background='#292c34';
 } else previewRoot().render(<Preview/>);
 document.body.style.cssText='overflow:auto;margin:0';
 document.documentElement.style.overflow='auto';
 document.getElementById('root')!.style.cssText='display:block;width:100%;height:auto;min-height:100vh';
 
-if(new URLSearchParams(location.search).has('app'))document.body.style.background='#292c34';
+if(new URLSearchParams(location.search).has('app')){
+ document.body.style.cssText='overflow:hidden;margin:0;background:#292c34';
+ document.documentElement.style.overflow='hidden';
+ document.getElementById('root')!.style.cssText='display:block;width:100%;height:100vh';
+ if(new URLSearchParams(location.search).has('shell-polish')){
+  const style=document.createElement('style');style.textContent='#root>button{display:none}';document.head.append(style);
+ }
+}
 
 if(new URLSearchParams(location.search).has("settings")){document.body.style.cssText="overflow:hidden;margin:0;background:#222";document.documentElement.style.overflow="hidden";document.getElementById("root")!.style.cssText="display:flex;width:100vw;height:100vh";}
 
@@ -234,3 +257,9 @@ if(new URLSearchParams(location.search).has('dock'))document.body.style.backgrou
 
 (window as any).previewSend=demoSend;
 (window as any).previewNotices=()=>demoNotices;
+// Optional review link opens the actual dock controls in this browser fixture.
+if(new URLSearchParams(location.search).has('quick-settings')){
+ const observer=new MutationObserver(openQuick);
+ function openQuick(){const trigger=document.querySelector<HTMLButtonElement>('.system-quick');if(trigger){observer.disconnect();trigger.click();}}
+ observer.observe(document.body,{childList:true,subtree:true});openQuick();setTimeout(()=>observer.disconnect(),15000);
+}

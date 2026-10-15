@@ -1,5 +1,6 @@
+import {createConfirmedPersistence, cacheConfirmedSettings, type PersistenceStatus, type SettingValues} from './confirmedPersistence';
 import {tr} from '../i18n/core';
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, emit } from "@tauri-apps/api/event";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
@@ -8,15 +9,12 @@ import type { UpdateCheckResult } from "../updater";
 import { useSettingsSync } from "../hooks/useSettingsSync";
 import { hexToHsl } from "../theme";
 import type { WidgetConfig } from "./types";
-function saveSetting(key: string, value: string) {
-    localStorage.setItem(key, value);
-    invoke("save_setting", { key, value }).catch(console.error);
-}
 function readBool(val: string | null): boolean {
     return val === "true";
 }
 export function useSettings() {
     const [autostart, setAutostart] = useState(false);
+    const autostartRevision = useRef(0);
     const [weatherEnabled, setWeatherEnabled] = useState(true);
     const [calendarEnabled, setCalendarEnabled] = useState(true);
     const [musicModeEnabled, setMusicModeEnabled] = useState(true);
@@ -33,6 +31,8 @@ export function useSettings() {
     const [timeFormat24h, setTimeFormat24h] = useState(() => localStorage.getItem("bloom-time-format-24h") === "true");
     const [tempUnitFahrenheit, setTempUnitFahrenheit] = useState(false);
     const [cityName, setCityName] = useState("");
+    const confirmedCity = useRef("");
+    const settingsRevision = useRef(0);
     const [citySearchResults, setCitySearchResults] = useState<Array<{
         name: string;
         country: string;
@@ -74,14 +74,35 @@ export function useSettings() {
     });
     const [exportStatus, setExportStatus] = useState<"idle" | "exporting" | "success" | "error">("idle");
     const [importStatus, setImportStatus] = useState<"idle" | "importing" | "success" | "error">("idle");
+    const [persistenceStatus, setPersistenceStatus] = useState<PersistenceStatus>({pending: 0, failures: []});
+    const persistence = useRef<ReturnType<typeof createConfirmedPersistence> | null>(null);
+    if (!persistence.current) persistence.current = createConfirmedPersistence(setPersistenceStatus);
+    const saveValues = (values: SettingValues, confirmed: () => void, id = Object.keys(values).sort().join('|')) => {
+        settingsRevision.current++;
+        return persistence.current!.run(id, async () => {
+            const entries = Object.entries(values);
+            if (entries.length === 1) {
+                const [key, value] = entries[0];
+                await invoke('save_setting', {key, value});
+            } else await invoke('save_settings', {values});
+        }, () => {
+            // Native events are sent only after the atomic disk commit. UI stays confirmed on errors.
+            confirmed();
+            try { cacheConfirmedSettings(localStorage, values); }
+            catch (error) { console.warn('Settings saved, local cache unavailable', error); }
+        });
+    };
+    const saveSetting = (key: string, value: string, confirmed: () => void) => saveValues({[key]: value}, confirmed);
     // ── Load all settings from backend + localStorage ──
-    const loadAllSettings = useCallback(async () => {
+    const loadAllSettings = useCallback(async (): Promise<void> => {
+        const revision = settingsRevision.current;
         try {
             const settings: Record<string, string> = await invoke("load_settings");
+            if (settingsRevision.current !== revision) { void loadAllSettings(); return; }
             const getVal = (key: string) => {
                 const val = settings[key];
-                if (val !== undefined && val !== null)
-                    return String(val);
+                if (key in settings)
+                    return val == null ? null : String(val);
                 return localStorage.getItem(key);
             };
             const apply = <T>(val: string | null, setter: (v: T) => void, transform: (v: string) => T) => {
@@ -111,8 +132,8 @@ export function useSettings() {
             apply(getVal("bloom-notch-mode"), setNotchMode, (v) => (v === "auto-hide" ? "smart" : v));
             apply(getVal("bloom-dock-mode"), setDockMode, (v) => (v === "auto-hide" ? "smart" : v));
             const savedCity = getVal("bloom-weather-city");
-            if (savedCity)
-                setCityName(savedCity);
+            confirmedCity.current = savedCity ?? "";
+            setCityName(confirmedCity.current);
             apply(getVal("bloom-theme-mode"), setThemeMode, (v) => v);
             apply(getVal("bloom-theme-color"), setThemeColor, (v) => v);
             apply(getVal("bloom-theme-opacity"), setThemeOpacity, parseFloat);
@@ -136,8 +157,9 @@ export function useSettings() {
     // ── Initialize on mount ──
     useEffect(() => {
         loadAllSettings();
+        const startupRevision = autostartRevision.current;
         isEnabled()
-            .then(setAutostart)
+            .then(value => { if (autostartRevision.current === startupRevision) setAutostart(value); })
             .catch(() => { });
         getVersion()
             .then((ver) => setAppVersion(ver || "—"))
@@ -145,7 +167,7 @@ export function useSettings() {
         checkForUpdates(false);
     }, []);
     // ── Sync settings from other windows ──
-    useSettingsSync({
+    const syncedSettings = {
         "bloom-dock-mode": setDockMode,
         "bloom-notch-mode": setNotchMode,
         "bloom-dock-enabled": setDockEnabled,
@@ -163,7 +185,7 @@ export function useSettings() {
         "bloom-time-format-24h": setTimeFormat24h,
         "bloom-low-battery-threshold": setLowBatteryThreshold,
         "bloom-scale": setScale,
-        "bloom-temp-unit": (v) => setTempUnitFahrenheit(v === "fahrenheit"),
+        "bloom-temp-unit": (v: string) => setTempUnitFahrenheit(v === "fahrenheit"),
         "dinox-auto-update": setAutoUpdate,
         "bloom-volume-overlay-enabled": setVolumeOverlayEnabled,
         "bloom-volume-edge-enabled": setVolumeEdgeEnabled,
@@ -174,8 +196,10 @@ export function useSettings() {
         "bloom-theme-opacity": setThemeOpacity,
         "bloom-theme-saturation": setThemeSaturation,
         "bloom-theme-brightness": setThemeBrightness,
-        "bloom-weather-city": (v) => setCityName(v || ""),
-    });
+        "bloom-weather-city": (v: string) => { confirmedCity.current = v || ""; setCityName(confirmedCity.current); },
+        "bloom-status-widgets": (v: string) => { try { const parsed = JSON.parse(v); if (Array.isArray(parsed.left) && Array.isArray(parsed.right)) setStatusWidgets(parsed); } catch {} },
+    };
+    useSettingsSync(Object.fromEntries(Object.entries(syncedSettings).map(([key, apply]) => [key, (value: any) => { settingsRevision.current++; (apply as (v: any) => void)(value); }])));
     // ── Listen for system accent changes (adaptive theme) ──
     useEffect(() => {
         const unlisten = listen<string>("system-accent-changed", (event) => {
@@ -280,182 +304,148 @@ export function useSettings() {
         };
     }, []);
     // ── Autostart ──
-    const toggleAutostart = async () => {
-        try {
-            const currentlyEnabled = await isEnabled();
-            if (currentlyEnabled) {
-                await disable();
-                setAutostart(false);
-            }
-            else {
-                await enable();
-                setAutostart(true);
-            }
-        }
-        catch (err) { }
+    const toggleAutostart = () => {
+        autostartRevision.current++;
+        return persistence.current!.run('autostart', async () => {
+        const currentlyEnabled = await isEnabled();
+        if (currentlyEnabled) await disable();
+        else await enable();
+        const actual = await isEnabled();
+        setAutostart(actual);
+        if (actual === currentlyEnabled) throw new Error('Windows did not apply the autostart change');
+        }, () => {});
     };
     // ── Simple boolean toggles ──
     const toggleWeather = () => {
         const next = !weatherEnabled;
-        setWeatherEnabled(next);
-        saveSetting("bloom-weather-enabled", String(next));
+        return saveSetting("bloom-weather-enabled", String(next), () => setWeatherEnabled(next));
     };
     const toggleCalendar = () => {
         const next = !calendarEnabled;
-        setCalendarEnabled(next);
-        saveSetting("bloom-calendar-enabled", String(next));
+        return saveSetting("bloom-calendar-enabled", String(next), () => setCalendarEnabled(next));
     };
     const toggleMusicMode = () => {
         const next = !musicModeEnabled;
-        setMusicModeEnabled(next);
-        saveSetting("bloom-music-mode-enabled", String(next));
+        return saveSetting("bloom-music-mode-enabled", String(next), () => setMusicModeEnabled(next));
     };
     const toggleMusicCompactNotch = () => {
         const next = !musicCompactNotch;
-        setMusicCompactNotch(next);
-        saveSetting("bloom-music-compact-notch", String(next));
+        return saveSetting("bloom-music-compact-notch", String(next), () => setMusicCompactNotch(next));
     };
     const toggleMediaLayout = (layout: "classic" | "compact") => {
-        setMediaLayout(layout);
-        saveSetting("bloom-media-layout", layout);
+        return saveSetting("bloom-media-layout", layout, () => setMediaLayout(layout));
     };
     const toggleVolumeOverlay = () => {
         const next = !volumeOverlayEnabled;
-        setVolumeOverlayEnabled(next);
-        saveSetting("bloom-volume-overlay-enabled", String(next));
+        return saveSetting("bloom-volume-overlay-enabled", String(next), () => setVolumeOverlayEnabled(next));
     };
     const toggleVolumeEdge = () => {
         const next = !volumeEdgeEnabled;
-        setVolumeEdgeEnabled(next);
-        saveSetting("bloom-volume-edge-enabled", String(next));
+        return saveSetting("bloom-volume-edge-enabled", String(next), () => setVolumeEdgeEnabled(next));
     };
     const toggleBrightnessOverlay = () => {
         const next = !brightnessOverlayEnabled;
-        setBrightnessOverlayEnabled(next);
-        saveSetting("bloom-brightness-overlay-enabled", String(next));
+        return saveSetting("bloom-brightness-overlay-enabled", String(next), () => setBrightnessOverlayEnabled(next));
     };
     const toggleBrightnessEdge = () => {
         const next = !brightnessEdgeEnabled;
-        setBrightnessEdgeEnabled(next);
-        saveSetting("bloom-brightness-edge-enabled", String(next));
+        return saveSetting("bloom-brightness-edge-enabled", String(next), () => setBrightnessEdgeEnabled(next));
     };
     const toggleAmbience = () => {
         const next = !mediaAmbienceEnabled;
-        setMediaAmbienceEnabled(next);
-        saveSetting("bloom-media-ambience-enabled", String(next));
+        return saveSetting("bloom-media-ambience-enabled", String(next), () => setMediaAmbienceEnabled(next));
     };
     const toggleCompactGlow = () => {
         const next = !mediaCompactGlowEnabled;
-        setMediaCompactGlowEnabled(next);
-        saveSetting("bloom-media-compact-glow-enabled", String(next));
+        return saveSetting("bloom-media-compact-glow-enabled", String(next), () => setMediaCompactGlowEnabled(next));
     };
     const toggleCorners = () => {
         const next = !cornersEnabled;
-        setCornersEnabled(next);
-        saveSetting("bloom-corners-enabled", String(next));
+        return saveSetting("bloom-corners-enabled", String(next), () => setCornersEnabled(next));
     };
     const toggleUpdateIndicator = () => {
         const next = !showUpdateIndicator;
-        setShowUpdateIndicator(next);
-        saveSetting("bloom-show-update-indicator", String(next));
+        return saveSetting("bloom-show-update-indicator", String(next), () => setShowUpdateIndicator(next));
     };
     const toggleTimeFormat24h = () => {
         const next = !timeFormat24h;
-        setTimeFormat24h(next);
-        saveSetting("bloom-time-format-24h", String(next));
+        return saveSetting("bloom-time-format-24h", String(next), () => setTimeFormat24h(next));
     };
     const toggleTempUnit = () => {
         const next = !tempUnitFahrenheit;
-        setTempUnitFahrenheit(next);
-        saveSetting("bloom-temp-unit", next ? "fahrenheit" : "celsius");
+        return saveSetting("bloom-temp-unit", next ? "fahrenheit" : "celsius", () => setTempUnitFahrenheit(next));
     };
     const toggleDock = () => {
         const next = !dockEnabled;
-        setDockEnabled(next);
-        saveSetting("bloom-dock-enabled", String(next));
+        return saveSetting("bloom-dock-enabled", String(next), () => setDockEnabled(next));
     };
     const toggleDockPreview = () => {
         const next = !dockPreviewEnabled;
-        setDockPreviewEnabled(next);
-        saveSetting("bloom-dock-preview-enabled", String(next));
+        return saveSetting("bloom-dock-preview-enabled", String(next), () => setDockPreviewEnabled(next));
     };
     const toggleDockIconOnly = () => {
         const next = !dockIconOnly;
-        setDockIconOnly(next);
-        saveSetting("bloom-dock-icon-only", String(next));
+        return saveSetting("bloom-dock-icon-only", String(next), () => setDockIconOnly(next));
     };
-    const toggleAutoUpdate = async () => {
-        const next = !autoUpdate;
-        try {
-            await invoke("save_setting", {key: "dinox-auto-update", value: String(next)});
-            localStorage.setItem("dinox-auto-update", String(next));
-            setAutoUpdate(next);
-        } catch { setUpdateStatus("error"); }
-    };
+    const toggleAutoUpdate = () => saveSetting('dinox-auto-update', String(!autoUpdate), () => setAutoUpdate(!autoUpdate));
     // ── Value setters ──
     const setDockModeValue = (newMode: string) => {
-        setDockMode(newMode);
-        saveSetting("bloom-dock-mode", newMode);
+        return saveSetting("bloom-dock-mode", newMode, () => setDockMode(newMode));
     };
     const setNotchModeValue = (newMode: string) => {
-        setNotchMode(newMode);
-        saveSetting("bloom-notch-mode", newMode);
+        return saveSetting("bloom-notch-mode", newMode, () => setNotchMode(newMode));
     };
     const handleThresholdChange = (val: number) => {
-        setLowBatteryThreshold(val);
-        saveSetting("bloom-low-battery-threshold", val.toString());
+        return saveSetting("bloom-low-battery-threshold", val.toString(), () => setLowBatteryThreshold(val));
     };
     const handleScaleChange = (val: number) => {
-        setScale(val);
-        saveSetting("bloom-scale", val.toString());
+        return saveSetting("bloom-scale", val.toString(), () => setScale(val));
     };
     const handleWidgetsChange = (config: WidgetConfig) => {
-        setStatusWidgets(config);
-        saveSetting("bloom-status-widgets", JSON.stringify(config));
+        return saveSetting("bloom-status-widgets", JSON.stringify(config), () => setStatusWidgets(config));
     };
     // ── Theme handlers ──
     const handleThemeModeChange = async (mode: string) => {
-        setThemeMode(mode);
-        saveSetting("bloom-theme-mode", mode);
-        if (mode === "adaptive") {
-            try {
-                const accentHex = await invoke<string>("get_system_accent_color");
+        // Resolve the accent inside the tracked operation so discovery errors are visible too.
+        const values: SettingValues = {'bloom-theme-mode': mode};
+        settingsRevision.current++;
+        return persistence.current!.run('theme', async () => {
+            if (mode === 'adaptive') {
+                const accentHex = await invoke<string>('get_system_accent_color');
                 const hsl = hexToHsl(accentHex);
-                setThemeSaturation(hsl.s / 100);
-                saveSetting("bloom-theme-saturation", String(hsl.s / 100));
-                setThemeBrightness(hsl.l / 100);
-                saveSetting("bloom-theme-brightness", String(hsl.l / 100));
+                values['bloom-theme-saturation'] = String(hsl.s / 100);
+                values['bloom-theme-brightness'] = String(hsl.l / 100);
             }
-            catch (e) {
-                console.error("Failed to parse adaptive accent HSL:", e);
+            await invoke('save_settings', {values});
+        }, () => {
+            setThemeMode(mode);
+            if (mode === 'adaptive') {
+                setThemeSaturation(Number(values['bloom-theme-saturation']));
+                setThemeBrightness(Number(values['bloom-theme-brightness']));
             }
-        }
+            try { cacheConfirmedSettings(localStorage, values); } catch (error) { console.warn(error); }
+        });
     };
     const handleThemeColorChange = (color: string) => {
-        setThemeColor(color);
-        saveSetting("bloom-theme-color", color);
-        try {
-            const hsl = hexToHsl(color);
+        const hsl = hexToHsl(color);
+        return saveValues({
+            'bloom-theme-color': color,
+            'bloom-theme-saturation': String(hsl.s / 100),
+            'bloom-theme-brightness': String(hsl.l / 100),
+        }, () => {
+            setThemeColor(color);
             setThemeSaturation(hsl.s / 100);
-            saveSetting("bloom-theme-saturation", String(hsl.s / 100));
             setThemeBrightness(hsl.l / 100);
-            saveSetting("bloom-theme-brightness", String(hsl.l / 100));
-        }
-        catch (e) {
-            console.error("Failed to parse custom color HSL:", e);
-        }
+        }, 'theme');
     };
     const handleOpacityChange = (value: number) => {
-        setThemeOpacity(value);
-        saveSetting("bloom-theme-opacity", String(value));
+        return saveSetting("bloom-theme-opacity", String(value), () => setThemeOpacity(value));
     };
     const handleSaturationChange = (value: number) => {
-        setThemeSaturation(value);
-        saveSetting("bloom-theme-saturation", String(value));
+        return saveSetting("bloom-theme-saturation", String(value), () => setThemeSaturation(value));
     };
     const handleBrightnessChange = (value: number) => {
-        setThemeBrightness(value);
-        saveSetting("bloom-theme-brightness", String(value));
+        return saveSetting("bloom-theme-brightness", String(value), () => setThemeBrightness(value));
     };
     // ── City search ──
     const selectCity = async (city: {
@@ -464,28 +454,32 @@ export function useSettings() {
         latitude: number;
         longitude: number;
     }) => {
-        setCityName(city.name);
-        setShowCityDropdown(false);
-        setCitySearchResults([]);
-        localStorage.setItem("bloom-weather-city", city.name);
-        localStorage.setItem("bloom-weather-lat", city.latitude.toString());
-        localStorage.setItem("bloom-weather-lon", city.longitude.toString());
-        await invoke("save_setting", { key: "bloom-weather-lat", value: city.latitude.toString() }).catch(() => { });
-        await invoke("save_setting", { key: "bloom-weather-lon", value: city.longitude.toString() }).catch(() => { });
-        await invoke("save_setting", { key: "bloom-weather-city", value: city.name }).catch(() => { });
-        emit("weather-refresh", { lat: city.latitude, lon: city.longitude });
+        const confirmed = await saveValues({
+            'bloom-weather-city': city.name,
+            'bloom-weather-lat': String(city.latitude),
+            'bloom-weather-lon': String(city.longitude),
+        }, () => {
+            confirmedCity.current = city.name;
+            setCityName(city.name);
+            setShowCityDropdown(false);
+            setCitySearchResults([]);
+        }, 'weather-location');
+        if (confirmed) void emit('weather-refresh', {lat: city.latitude, lon: city.longitude}).catch(console.error);
+        else setCityName(confirmedCity.current);
     };
     const handleCityClear = async () => {
-        setCityName("");
-        setShowCityDropdown(false);
-        setCitySearchResults([]);
-        localStorage.removeItem("bloom-weather-city");
-        localStorage.removeItem("bloom-weather-lat");
-        localStorage.removeItem("bloom-weather-lon");
-        await invoke("save_setting", { key: "bloom-weather-lat", value: null }).catch(() => { });
-        await invoke("save_setting", { key: "bloom-weather-lon", value: null }).catch(() => { });
-        await invoke("save_setting", { key: "bloom-weather-city", value: null }).catch(() => { });
-        emit("weather-refresh", true);
+        const confirmed = await saveValues({
+            'bloom-weather-city': null,
+            'bloom-weather-lat': null,
+            'bloom-weather-lon': null,
+        }, () => {
+            confirmedCity.current = '';
+            setCityName('');
+            setShowCityDropdown(false);
+            setCitySearchResults([]);
+        }, 'weather-location');
+        if (confirmed) void emit('weather-refresh', true).catch(console.error);
+        else setCityName(confirmedCity.current);
     };
     // ── Export / Import ──
     const handleExportSettings = async () => {
@@ -544,6 +538,8 @@ export function useSettings() {
         }
     };
     return {
+        persistenceStatus,
+        dismissSaveError: persistence.current.dismiss,
         // System
         autostart,
         toggleAutostart,

@@ -1,0 +1,92 @@
+/* A control surface: connection tiles, tactile rails, then compact system actions.
+   All colour derives from the user's dock palette. Scope excludes device subpages. */
+html[data-bloom-unified] .system-panel.quick-settings {
+  --quick-muted: color-mix(in srgb, var(--dock-text) 72%, var(--system-surface));
+  --quick-rail: color-mix(in srgb, var(--dock-text) 16%, var(--system-surface));
+  padding: 16px;
+}
+html[data-bloom-unified] .quick-settings>header { margin-bottom: 14px; }
+html[data-bloom-unified] .quick-settings>header strong { font-size: 15px; font-weight: 600; }
+html[data-bloom-unified] .quick-settings>header button { border-radius: 50%; background: color-mix(in srgb, var(--dock-text) 6%, transparent); }
+html[data-bloom-unified] .quick-settings .system-connections { gap: 8px; margin-bottom: 6px; }
+html[data-bloom-unified] .quick-settings .system-connections button {
+  position: relative; display: grid; grid-template-columns: 1fr auto; grid-template-rows: 30px auto;
+  min-height: 94px; padding: 12px; gap: 7px 6px; border-radius: 13px;
+  background: color-mix(in srgb, var(--dock-text) 7%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dock-text) 8%, transparent);
+}
+html[data-bloom-unified] .quick-settings .system-connections button[data-active=true] {
+  background: color-mix(in srgb, var(--dock-text) 11%, transparent);
+  border-color: color-mix(in srgb, var(--dock-text) 18%, transparent);
+}
+html[data-bloom-unified] .quick-settings .system-connections button:hover { background: color-mix(in srgb, var(--dock-text) 15%, transparent); }
+.quick-settings .quick-connection-icon { position: relative; display: flex; align-items: center; width: 28px; height: 28px; grid-column: 1; grid-row: 1; }
+.quick-settings .quick-connection-icon i { width: 5px; height: 5px; position: absolute; right: -3px; bottom: 1px; background: var(--dock-text); border: 2px solid var(--system-surface); box-sizing: content-box; border-radius: 50%; visibility: hidden; }
+.quick-settings [data-active=true] .quick-connection-icon i { visibility: visible; }
+.quick-settings .system-connections button>svg:last-child { grid-column: 2; grid-row: 1; align-self: center; }
+html[data-bloom-unified] .quick-settings .quick-connection-label { grid-column: 1 / -1; grid-row: 2; font-size: 12px; font-weight: 600; }
+html[data-bloom-unified] .quick-settings .quick-connection-label small { display: block; font-size: 11px; color: var(--quick-muted); font-weight: 400; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+html[data-bloom-unified] .quick-settings .system-slider { border: 0; padding: 10px 0 5px; }
+html[data-bloom-unified] .quick-settings .system-slider>div:first-child { gap: 8px; margin-bottom: 6px; min-height: 22px; }
+html[data-bloom-unified] .quick-settings .system-slider>div:first-child>svg { display: none; }
+html[data-bloom-unified] .quick-settings .system-slider>div:first-child>button { width: 24px; min-width: 24px; height: 24px; min-height: 24px; }
+html[data-bloom-unified] .quick-settings .system-slider label { font-size: 12px; }
+html[data-bloom-unified] .quick-settings .system-slider output { font-size: 12px; color: var(--dock-text); font-weight: 600; }
+.quick-settings .quick-range { position: relative; height: 36px; border-radius: 9px; isolation: isolate; }
+html[data-bloom-unified] .quick-settings .quick-range input {
+  appearance: none; -webkit-appearance: none; width: 100%; height: 36px; border-radius: 9px; margin: 0;
+  background: linear-gradient(to right, var(--dock-text) 0 var(--quick-level), var(--quick-rail) var(--quick-level) 100%);
+  border: 1px solid color-mix(in srgb, var(--dock-text) 24%, transparent); outline: none;
+}
+.quick-settings .quick-range input::-webkit-slider-runnable-track { height: 34px; background: transparent; }
+.quick-settings .quick-range input::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; height: 18px; width: 5px; margin-top: 8px; border-radius: 3px; border: 1px solid var(--dock-text); background: var(--system-surface); box-shadow: 0 0 0 2px var(--dock-text); }
+.quick-settings .quick-range input::-moz-range-thumb { height: 18px; width: 5px; border-radius: 3px; border: 1px solid var(--dock-text); background: var(--system-surface); box-shadow: 0 0 0 2px var(--dock-text); }
+.quick-settings .quick-range-icon { position: absolute; display: flex; align-items: center; left: 12px; top: 0; height: 36px; color: var(--dock-text); pointer-events: none; }
+.quick-settings .quick-range-ink { position: absolute; inset: 0 auto 0 0; width: var(--quick-level); overflow: hidden; pointer-events: none; border-radius: 9px 0 0 9px; }
+.quick-settings .quick-range-ink .quick-range-icon { color: var(--system-surface); }
+html[data-bloom-unified] .quick-settings .quick-range input:focus-visible { outline: 2px solid var(--dock-accent); outline-offset: 3px; }
+.quick-settings .quick-range[data-disabled=true] { opacity: .5; }
+html[data-bloom-unified] .quick-settings .quick-range input:disabled { opacity: 1; }
+html[data-bloom-unified] .quick-settings .system-links { margin-top: 2px; gap: 4px 10px; }
+html[data-bloom-unified] .quick-settings .system-links button, html[data-bloom-unified] .quick-settings .system-links>span { font-size: 10px; color: var(--quick-muted); min-height: 24px; }
+html[data-bloom-unified] .quick-settings .system-links>span { display: flex; align-items: center; }
+html[data-bloom-unified] .quick-settings .system-slider button[aria-pressed=true] { background: color-mix(in srgb, var(--dock-text) 12%, transparent); }
+html[data-bloom-unified] .quick-settings .system-info-row { padding: 7px 0 9px; margin: 4px 0 0; gap: 12px; border-bottom: 1px solid color-mix(in srgb, var(--dock-text) 10%, transparent); }
+html[data-bloom-unified] .quick-settings .system-info-row button { padding: 6px 4px; gap: 10px; min-height: 44px; }
+html[data-bloom-unified] .quick-settings .system-info-row button>svg:last-child { margin-left: auto; opacity: .55; }
+html[data-bloom-unified] .quick-settings .system-info-row small { font-size: 10px; color: var(--quick-muted); }
+.quick-settings .quick-battery-art { position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 38px; height: 23px; border: 1px solid color-mix(in srgb, var(--dock-text) 45%, transparent); border-radius: 6px; padding: 4px; }
+.quick-settings .quick-battery-art::after { content: ''; width: 2px; height: 7px; background: var(--dock-text); opacity: .45; border-radius: 1px; position: absolute; right: -4px; }
+.quick-settings .quick-battery-cells { display: flex; gap: 2px; width: 100%; height: 100%; }
+.quick-settings .quick-battery-cells i { flex: 1; border-radius: 1px; background: color-mix(in srgb, var(--dock-text) 15%, transparent); }
+.quick-settings .quick-battery-cells i[data-filled=true] { background: var(--dock-text); }
+.quick-settings .quick-battery-art[data-low=true] .quick-battery-cells i[data-filled=true] { background: #ef8b81; }
+.quick-settings .quick-battery-art>svg { position: absolute; color: var(--system-surface); background: var(--dock-text); border-radius: 3px; }
+.quick-settings .quick-keycap { display: grid; place-items: center; flex-shrink: 0; width: 34px; height: 30px; border: 1px solid color-mix(in srgb, var(--dock-text) 22%, transparent); border-bottom-width: 3px; border-radius: 7px; }
+html[data-bloom-unified] .quick-settings .system-shortcuts { border: 0; padding-top: 8px; gap: 2px 8px; }
+html[data-bloom-unified] .quick-settings .system-shortcuts button { min-height: 32px; padding: 6px 4px; font-size: 11px; }
+html[data-bloom-unified] .quick-settings .system-shortcuts button>svg:last-child:not(:first-child) { margin-left: auto; opacity: .5; }
+html[data-bloom-unified] .quick-settings .system-shortcuts .quick-dnd { grid-column: 1 / -1; gap: 8px; }
+.quick-settings .quick-dnd span { flex: 1; }
+.quick-settings .quick-dnd i { display: flex; align-items: center; width: 28px; height: 16px; padding: 2px; border-radius: 10px; background: color-mix(in srgb, var(--dock-text) 20%, transparent); }
+.quick-settings .quick-dnd b { width: 12px; height: 12px; border-radius: 50%; background: var(--dock-text); }
+.quick-settings .quick-dnd[aria-checked=true] i { background: var(--dock-text); justify-content: flex-end; }
+.quick-settings .quick-dnd[aria-checked=true] b { background: var(--system-surface); }
+.quick-settings .quick-windows { margin-top: 8px; font-size: 10px; color: var(--quick-muted); }
+.quick-settings .quick-windows summary { cursor: pointer; min-height: 28px; display: flex; align-items: center; justify-content: space-between; gap: 8px; list-style: none; border-radius: 6px; padding: 4px; }
+.quick-settings .quick-windows summary::-webkit-details-marker { display: none; }
+.quick-settings .quick-windows summary:focus-visible { outline: 2px solid var(--dock-accent); outline-offset: 2px; }
+.quick-settings .quick-windows[open] summary svg { transform: rotate(90deg); }
+.quick-settings .quick-windows>div { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 3px 8px; padding: 6px 0; }
+.quick-settings .quick-windows button { min-height: 32px; padding: 6px 4px; text-align: left; display: flex; align-items: center; gap: 8px; border-radius: 6px; }
+.quick-settings .quick-windows button>svg:last-child { margin-left: auto; }
+html[data-bloom-unified] .quick-settings footer { margin-top: 8px; padding-top: 7px; border-color: color-mix(in srgb, var(--dock-text) 10%, transparent); }
+html[data-bloom-unified] .quick-settings footer button { color: var(--quick-muted); font-size: 10px; }
+@media(max-width:360px) {
+  html[data-bloom-unified] .quick-settings .system-connections { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  html[data-bloom-unified] .quick-settings .system-connections button { padding: 10px; }
+}
+@media(forced-colors:active) {
+  .quick-settings .quick-range input { forced-color-adjust: auto; }
+  .quick-settings .quick-range-icon { display: none; }
+}

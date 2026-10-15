@@ -1,0 +1,93 @@
+/* Quota information shares the calendar and dock's quiet controls. */
+.ai-limits-chip {
+ display:inline-flex;align-items:center;gap:6px;padding:3px 6px;border:0;
+ background:transparent;color:var(--bloom-text-secondary,var(--bloom-text-muted,#c8c8ce));
+ font:500 11px var(--dn-font,'Segoe UI Variable','Segoe UI',sans-serif);
+ white-space:nowrap;border-radius:8px;cursor:pointer;flex-shrink:0;
+ font-variant-numeric:tabular-nums;transition:background-color 120ms ease,color 120ms ease;
+}
+.ai-limits-chip strong{font-weight:600;min-width:25px;text-align:right;color:var(--bloom-text,#f4f4f5)}
+.ai-limits-chip:hover{background:var(--bloom-hover-bg,#ffffff12);color:var(--bloom-text,#f4f4f5)}
+.ai-limits-chip:focus-visible,.ai-limits-panel button:focus-visible,.ai-source-controls button:focus-visible{
+ outline:2px solid var(--bloom-accent,#d6d6de);outline-offset:2px;
+}
+.ai-limits-panel{
+ width:100%;min-height:0;flex:1;display:flex;flex-direction:column;white-space:normal;
+ color:var(--bloom-text,#f4f4f5);font-family:var(--dn-font,'Segoe UI Variable','Segoe UI',sans-serif);
+ text-align:left;overflow:hidden;line-height:1.5;
+}
+.ai-limits-panel header{
+ display:flex;align-items:center;gap:8px;padding:8px 6px;
+ border-bottom:1px solid var(--bloom-border,#ffffff16);flex-shrink:0;font-size:14px;
+}
+.ai-limits-panel header strong{flex:1;font-weight:600;letter-spacing:-.15px}
+.ai-limits-panel button{
+ display:flex;align-items:center;justify-content:center;width:30px;height:30px;
+ border:0;border-radius:8px;background:transparent;color:var(--bloom-text-secondary,var(--bloom-text-muted,#c8c8ce));cursor:pointer;
+}
+.ai-limits-panel button:hover{background:var(--bloom-hover-bg,#ffffff12);color:var(--bloom-text,#f4f4f5)}
+.ai-limits-panel button:disabled{opacity:.45;cursor:wait}
+.ai-limits-scroll{overflow:auto;min-height:0;flex:1;scrollbar-width:auto;padding:0 6px 10px}
+.ai-limits-scroll article+article{border-top:1px solid var(--bloom-border,#ffffff16);margin-top:12px}
+.ai-limits-scroll h3{
+ font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;margin:10px 0 8px;
+}
+.ai-limits-scroll h3 small{font-size:11px;font-weight:400;color:var(--bloom-text-secondary,var(--bloom-text-muted,#aaaab4))}
+.ai-provider-heading{display:flex;flex-direction:column;gap:1px;min-width:0;line-height:1.35}
+.ai-provider-heading>span{font-size:14px;font-weight:600}
+.ai-quota{margin:8px 0 10px}
+.ai-quota>div{
+ display:flex;justify-content:space-between;gap:8px;align-items:baseline;font-size:12px;overflow-wrap:anywhere;
+}
+.ai-quota strong{font-weight:600;flex-shrink:0;font-variant-numeric:tabular-nums}
+.ai-quota progress{
+ display:block;width:100%;height:5px;border:0;border-radius:4px;
+ background:var(--theme-control,var(--dn-control,#1a1a1e));margin:6px 0;color:var(--bloom-accent,#d6d6de);
+}
+.ai-quota progress::-webkit-progress-bar{background:var(--theme-control,var(--dn-control,#1a1a1e));border-radius:4px}
+.ai-quota progress::-webkit-progress-value{background:var(--bloom-accent,#d6d6de);border-radius:4px}
+.ai-quota progress::-moz-progress-bar{background:var(--bloom-accent,#d6d6de);border-radius:4px}
+.ai-quota small,.ai-limits-checked{font-size:11px;color:var(--bloom-text-secondary,var(--bloom-text-muted,#aaaab4))}
+/* Dim the meter, not its explanation, when data needs refreshing. */
+.ai-quota-stale progress{opacity:.45}
+.ai-limits-hint{
+ font-size:12px;line-height:1.55;color:var(--bloom-text-secondary,var(--bloom-text-muted,#aaaab4));
+ white-space:normal;margin:10px 0;overflow-wrap:anywhere;
+}
+.ai-source-controls{
+ display:flex;align-items:center;gap:14px;padding:10px 16px 18px;font-size:12px;
+ line-height:1.55;white-space:normal;
+}
+.ai-source-controls span{flex:1;min-width:0;color:var(--bloom-text-secondary,var(--bloom-text-muted,#aaaab4))}
+.ai-source-controls button{
+ display:flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;
+ background:var(--bloom-group-bg,#1a1a1e);color:var(--bloom-text,#f4f4f5);
+ border:1px solid var(--bloom-border,#ffffff20);border-radius:8px;padding:8px 10px;
+ min-height:34px;font:inherit;cursor:pointer;
+}
+.ai-source-controls button:hover{background:var(--bloom-hover-bg,#ffffff12)}
+.ai-limits-settings>.ai-limits-hint{padding:0 16px 12px}
+.ai-source-controls button:disabled{opacity:.5;cursor:wait}
+.ai-limits-rail{
+ height:24px;display:flex;justify-content:center;gap:12px;align-items:center;
+ max-width:100%;overflow:hidden;flex-shrink:0;
+}
+.ai-limits-scroll::-webkit-scrollbar{width:4px}
+.ai-limits-scroll::-webkit-scrollbar-track{background:transparent}
+.ai-limits-scroll::-webkit-scrollbar-thumb{background:var(--bloom-scrollbar-thumb,#ffffff30);border-radius:4px}
+.ai-limits-scroll::-webkit-scrollbar-button{display:none}
+@container (max-width:350px){
+ .ai-limits-chip{font-size:10px;gap:4px;padding:2px 4px}
+ .ai-source-controls{flex-wrap:wrap}
+ .ai-source-controls button{max-width:100%;white-space:normal}
+ .ai-quota>div{flex-wrap:wrap}
+ .ai-limits-scroll h3{flex-wrap:wrap}
+}
+/* Names stay in the accessible label when the compact island only has room
+   for each provider mark and its quota. Never clip an entire provider. */
+@container (max-width:240px){
+ .ai-limits-chip>span:not(.provider-logo){display:none}
+ .ai-limits-rail{gap:8px}
+ .ai-limits-chip{gap:4px;padding:2px 4px}
+}
+@media(prefers-reduced-motion:reduce){.ai-limits-chip{transition:none}}

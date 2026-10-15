@@ -17,4 +17,13 @@ describe('system controls',()=>{
      expect(p.bottom).toBeGreaterThanOrEqual(82);expect(p.bottom+p.maxHeight).toBeLessThanOrEqual(height-12);
    }
  });
+ it('opens side-dock controls toward the desktop even on narrow windows',()=>{
+   for(const width of [180,390,1280])for(const edge of ['left','right'] as const){
+     const anchor=edge==='left'?{left:12,right:72,top:90,bottom:125,edge}:{left:width-72,right:width-12,top:90,bottom:125,edge};
+     const p=panelPosition(anchor,{width,height:500});
+     expect(p.left).toBeGreaterThanOrEqual(0);expect(p.left+p.width).toBeLessThanOrEqual(width);
+     expect(p.top).toBeGreaterThanOrEqual(0);expect(p.top!+p.maxHeight).toBeLessThanOrEqual(500);
+     if(width===1280)expect(edge==='left'?p.left>=anchor.right:p.left+p.width<=anchor.left).toBe(true);
+   }
+ });
 });

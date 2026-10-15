@@ -2,7 +2,7 @@
 //! All dock operations read current settings under one lock; delayed callers never carry old state.
 use std::{path::{Path, PathBuf}, sync::{Mutex, OnceLock, atomic::{AtomicBool, AtomicU64, Ordering}}, time::{Duration, SystemTime, UNIX_EPOCH}};
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Emitter};
 use windows::{core::{BOOL, PCWSTR}, Win32::{Foundation::{HWND, LPARAM, RECT}, UI::{Shell::*, WindowsAndMessaging::*}}};
 use crate::{state::{DOCK_APPBAR_REGISTERED, NATIVE_TASKBAR_HIDDEN}, utils::get_setting_str};
 
@@ -16,6 +16,15 @@ static GUARDIAN_STARTED: AtomicBool = AtomicBool::new(false);
 static QUEUED: AtomicBool = AtomicBool::new(false);
 static SNAPSHOT: Mutex<Option<Snapshot>> = Mutex::new(None);
 static PLACEMENT: Mutex<Option<(isize, i32, i32, i32, i32, bool)>> = Mutex::new(None);
+static LAST_DOCK_EDGE:std::sync::atomic::AtomicU32=std::sync::atomic::AtomicU32::new(3);
+#[derive(Clone,Copy,Debug,Default,PartialEq,Serialize)]
+pub struct DockInsets {pub left:f64,pub top:f64,pub right:f64,pub bottom:f64}
+static DOCK_INSETS:Mutex<DockInsets>=Mutex::new(DockInsets{left:0.,top:0.,right:0.,bottom:0.});
+pub fn dock_insets()->DockInsets{*DOCK_INSETS.lock().unwrap_or_else(|e|e.into_inner())}
+fn publish_dock_insets(app:&AppHandle,value:DockInsets){
+ let mut old=DOCK_INSETS.lock().unwrap_or_else(|e|e.into_inner());
+ if *old!=value{*old=value;drop(old);let _=app.emit("dock-workarea-insets",value);}
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct Tray { hwnd: isize, pid: u32, visible: bool, primary: bool }
@@ -50,6 +59,9 @@ unsafe extern "system" fn enumerate(hwnd: HWND, arg: LPARAM) -> BOOL {
     BOOL(1)
 }
 fn trays() -> Vec<Tray> { let mut result=Vec::new(); unsafe { let _=EnumWindows(Some(enumerate),LPARAM(&mut result as *mut Vec<Tray> as isize)); } result }
+pub fn primary_taskbar_signature()->Vec<(isize,bool,i32,i32,i32,i32)>{
+ trays().into_iter().filter(|t|t.primary).map(|t|{let mut r=RECT::default();unsafe{let _=GetWindowRect(HWND(t.hwnd as *mut _),&mut r);} (t.hwnd,t.visible,r.left,r.top,r.right,r.bottom)}).collect()
+}
 fn same_window(tray: &Tray) -> bool { unsafe { let mut pid=0; GetWindowThreadProcessId(HWND(tray.hwnd as *mut _),Some(&mut pid)); pid!=0 && pid==tray.pid } }
 
 // We never move Explorer windows off-screen or change their transparency/styles.
@@ -114,11 +126,13 @@ pub fn init(app: &AppHandle) {
             let _guard=LOCK.lock().unwrap_or_else(|e|e.into_inner());
             recover_legacy();
         }
+        let mut rejoin=crate::shell_policy::RejoinWindow::default();
         'watch: loop {
         std::thread::sleep(Duration::from_secs(2));
         if STOPPING.load(Ordering::SeqCst) { break; }
         let _guard=LOCK.lock().unwrap_or_else(|e|e.into_inner());
         if NATIVE_TASKBAR_HIDDEN.load(Ordering::SeqCst) {
+            rejoin=crate::shell_policy::RejoinWindow::default();
             let beat=MAIN_BEAT.load(Ordering::SeqCst).min(DOCK_BEAT.load(Ordering::SeqCst));
             let recovered=path("shell-recovered.flag").is_some_and(|p|p.exists());
             if recovered || crate::shell_policy::should_recover(true,now(),beat) {
@@ -146,7 +160,23 @@ pub fn init(app: &AppHandle) {
                 data.heartbeat=beat;
                 if DIR.get().is_some_and(|d|persist(d,data).is_err()) { drop(snapshot); restore_locked(); }
             }
-        } else if path("shell-recovery.json").is_some_and(|p|p.exists()) { restore_locked(); }
+        } else {
+            if path("shell-recovery.json").is_some_and(|p|p.exists()) && !restore_locked() {
+                rejoin=crate::shell_policy::RejoinWindow::default();
+                continue;
+            }
+            let reason=path("shell-recovered.flag").and_then(|p|std::fs::read_to_string(p).ok()).unwrap_or_default();
+            if rejoin.observe(requested(&app),enabled(&app),crate::shell_policy::retryable_recovery(&reason),
+                now(),MAIN_BEAT.load(Ordering::SeqCst),DOCK_BEAT.load(Ordering::SeqCst)) {
+                // Hold the same lock as replacement/restoration, and remove the
+                // block only after restoration and a healthy grace period succeed.
+                if path("shell-recovered.flag").is_some_and(|p|std::fs::remove_file(p).is_ok()) {
+                    crate::diagnostics::record("shell recovery: both panels stable; reapplying saved replacement mode");
+                    rejoin=crate::shell_policy::RejoinWindow::default();
+                    drop(_guard); request_refresh(&app); continue;
+                }
+            }
+        }
         }
     });
 }
@@ -250,17 +280,54 @@ pub fn refresh(app:&AppHandle) {
     // This dock lives on the primary monitor. Secondary taskbars stay usable.
     let replace=crate::shell_policy::replacement_allowed(requested(app),true,ready,recovered);
     if !replace {restore_locked();}
-    let Ok(Some(monitor))=app.primary_monitor() else{restore_locked();return};
-    let Ok(size)=dock.outer_size() else{restore_locked();return};
-    if size.height<=10 {restore_locked();return}
+    let Ok(Some(monitor))=app.primary_monitor() else{
+        let _=dock.set_ignore_cursor_events(true);let _=dock.hide();
+        if DOCK_APPBAR_REGISTERED.swap(false,Ordering::SeqCst){crate::services::unregister_appbar_native(hwnd);}
+        *PLACEMENT.lock().unwrap_or_else(|e|e.into_inner())=None;
+        if let Some(main)=app.get_webview_window("main"){
+            let _=main.set_ignore_cursor_events(true);
+            if crate::state::MAIN_APPBAR_REGISTERED.swap(false,Ordering::SeqCst){if let Ok(h)=main.hwnd(){crate::services::unregister_appbar_native(h);}}
+        }
+        restore_locked();return
+    };
     let pos=monitor.position(); let screen=monitor.size();
     let design:serde_json::Value=serde_json::from_str(&get_setting_str(app,"bloom-dock-design").unwrap_or_default()).unwrap_or_default();
     let n=|key:&str,default:f64,min:f64,max:f64|design[key].as_f64().filter(|v|v.is_finite()).unwrap_or(default).clamp(min,max);
     let reserved=n("size",44.,28.,64.)+2.*n("padding",10.,4.,18.)+n("offset",12.,0.,28.)+if design["labels"].as_bool().unwrap_or(false){17.}else{2.};
     let height=(reserved*crate::utils::get_bloom_scale(app)*monitor.scale_factor()).ceil() as i32;
+    let edge=match design["edge"].as_str(){Some("left")=>ABE_LEFT,Some("right")=>ABE_RIGHT,_=>ABE_BOTTOM};
     let fixed=get_setting_str(app,"bloom-dock-mode").as_deref().unwrap_or("fixed")=="fixed";
     unsafe {
-        let mut abd=APPBARDATA{cbSize:std::mem::size_of::<APPBARDATA>() as u32,hWnd:hwnd,uCallbackMessage:crate::services::appbar_callback_message(),uEdge:ABE_BOTTOM,rc:RECT{left:pos.x,top:pos.y+screen.height as i32-height,right:pos.x+screen.width as i32,bottom:pos.y+screen.height as i32},..Default::default()};
+        let full=RECT{left:pos.x,top:pos.y,right:pos.x+screen.width as i32,bottom:pos.y+screen.height as i32};
+        use windows::Win32::Graphics::Gdi::{MonitorFromPoint,GetMonitorInfoW,MONITORINFO,MONITOR_DEFAULTTONEAREST};
+        let mut info=MONITORINFO{cbSize:std::mem::size_of::<MONITORINFO>() as u32,..Default::default()};
+        let primary_point=windows::Win32::Foundation::POINT{x:pos.x+screen.width as i32/2,y:pos.y+screen.height as i32/2};
+        let work=if GetMonitorInfoW(MonitorFromPoint(primary_point,MONITOR_DEFAULTTONEAREST),&mut info).as_bool(){info.rcWork}else{full};
+        let bounds=|r:RECT|crate::island_geometry::Bounds{x:r.left,y:r.top,width:r.right-r.left,height:r.bottom-r.top};
+        let previous=*PLACEMENT.lock().unwrap_or_else(|e|e.into_inner());
+        let own=previous.filter(|p|p.5).map(|p|bounds(RECT{left:p.1,top:p.2,right:p.3,bottom:p.4}));
+        let old_edge=match LAST_DOCK_EDGE.load(Ordering::Relaxed){0=>"left",2=>"right",_=>"bottom"};
+        let safe=crate::island_geometry::dock_available_bounds(bounds(full),bounds(work),own,old_edge);
+        let mut safe=RECT{left:safe.x,top:safe.y,right:safe.x+safe.width,bottom:safe.y+safe.height};
+        // Visible Explorer bars can be auto-hide (thus absent from rcWork).
+        // Never put our icons over their actually visible rectangle.
+        if !replace {for t in trays().iter().filter(|t|t.primary&&t.visible){
+            let mut r=RECT::default();
+            if GetWindowRect(HWND(t.hwnd as *mut _),&mut r).is_ok(){
+                if r.right-r.left>screen.width as i32/2 {
+                    if r.bottom>=full.bottom&&r.top>full.top{safe.bottom=safe.bottom.min(r.top);}
+                    else if r.top<=full.top&&r.bottom<full.bottom{safe.top=safe.top.max(r.bottom);}
+                }else if r.bottom-r.top>screen.height as i32/2{
+                    if r.left<=full.left&&r.right<full.right{safe.left=safe.left.max(r.right);}
+                    else if r.right>=full.right&&r.left>full.left{safe.right=safe.right.min(r.left);}
+                }
+            }
+        }}
+        let dpi=monitor.scale_factor();
+        publish_dock_insets(app,DockInsets{left:(safe.left-full.left).max(0) as f64/dpi,top:(safe.top-full.top).max(0) as f64/dpi,right:(full.right-safe.right).max(0) as f64/dpi,bottom:(full.bottom-safe.bottom).max(0) as f64/dpi});
+        let mut strip=full;
+        if edge==ABE_LEFT {strip.right=strip.left+height;} else if edge==ABE_RIGHT {strip.left=strip.right-height;} else {strip.top=strip.bottom-height;}
+        let mut abd=APPBARDATA{cbSize:std::mem::size_of::<APPBARDATA>() as u32,hWnd:hwnd,uCallbackMessage:crate::services::appbar_callback_message(),uEdge:edge,rc:strip,..Default::default()};
         crate::services::install_appbar_callback(hwnd);
         if fixed && !DOCK_APPBAR_REGISTERED.load(Ordering::SeqCst) {
             if SHAppBarMessage(ABM_NEW,&mut abd)==0 {restore_locked();return}
@@ -268,20 +335,23 @@ pub fn refresh(app:&AppHandle) {
             *PLACEMENT.lock().unwrap_or_else(|e|e.into_inner())=None;
         } else if !fixed && DOCK_APPBAR_REGISTERED.swap(false,Ordering::SeqCst) {crate::services::unregister_appbar_native(hwnd);}
         SHAppBarMessage(ABM_QUERYPOS,&mut abd);
-        abd.rc.top=abd.rc.bottom-height;
+        if edge==ABE_LEFT {abd.rc.right=abd.rc.left+height;} else if edge==ABE_RIGHT {abd.rc.left=abd.rc.right-height;} else {abd.rc.top=abd.rc.bottom-height;}
         let placement=(hwnd.0 as isize,abd.rc.left,abd.rc.top,abd.rc.right,abd.rc.bottom,fixed);
         let changed=PLACEMENT.lock().unwrap_or_else(|e|e.into_inner()).as_ref()!=Some(&placement);
         if fixed && changed {SHAppBarMessage(ABM_SETPOS,&mut abd);}
         let mut current=RECT::default();
         let positioned=GetWindowRect(hwnd,&mut current).is_ok()
-            && current.left==abd.rc.left && current.top==abd.rc.bottom-size.height as i32
-            && current.right==abd.rc.right && current.bottom==abd.rc.bottom;
-        if !positioned && SetWindowPos(hwnd,None,abd.rc.left,abd.rc.bottom-size.height as i32,abd.rc.right-abd.rc.left,size.height as i32,SWP_NOZORDER|SWP_NOACTIVATE).is_err() {restore_locked();return}
+            && current.left==full.left && current.top==full.top
+            && current.right==full.right && current.bottom==full.bottom;
+        // The transparent WebView covers the monitor; only the measured dock and
+        // popup rectangles accept input. The AppBar reserves the chosen edge strip.
+        if !positioned && SetWindowPos(hwnd,None,full.left,full.top,full.right-full.left,full.bottom-full.top,SWP_NOZORDER|SWP_NOACTIVATE).is_err() {restore_locked();return}
         if !dock.is_visible().unwrap_or(false) && dock.show().is_err() {restore_locked();return}
         if crate::state::CURRENT_FOREGROUND_FULLSCREEN.load(Ordering::Relaxed) {
             let _=SetWindowPos(hwnd,Some(HWND_BOTTOM),0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_NOACTIVATE);
         } else { crate::utils::re_assert_topmost(hwnd); }
         *PLACEMENT.lock().unwrap_or_else(|e|e.into_inner())=Some(placement);
+        LAST_DOCK_EDGE.store(edge,Ordering::Relaxed);
         if replace && !NATIVE_TASKBAR_HIDDEN.load(Ordering::SeqCst) {
             // Guard is ready, WebViews are responding, and dock placement succeeded.
             if path("shell-recovery.json").is_some_and(|p|p.exists()) && !restore_locked() {return}
@@ -315,7 +385,7 @@ pub fn reset_recovery() {if let Some(p)=path("shell-recovered.flag"){let _=std::
 #[tauri::command]
 pub fn shell_status() -> serde_json::Value {
     let replacing=NATIVE_TASKBAR_HIDDEN.load(Ordering::SeqCst);
-    serde_json::json!({"recovered":path("shell-recovered.flag").is_some_and(|p|p.exists()),"replacing":replacing,"restorePending":!replacing && path("shell-recovery.json").is_some_and(|p|p.exists())})
+    serde_json::json!({"recovered":path("shell-recovered.flag").is_some_and(|p|p.exists()),"replacing":replacing,"restorePending":!replacing && path("shell-recovery.json").is_some_and(|p|p.exists()),"dockInsets":dock_insets()})
 }
 
 #[cfg(test)]

@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
 
 html,
 body {
@@ -26,6 +25,39 @@ img {
     /* No pointer-events: none here — the pill itself needs to receive mouse */
 }
 
+.island-anchor{display:flex;position:absolute;inset:0;box-sizing:border-box;pointer-events:none;align-items:flex-start;justify-content:center;}
+.island-anchor>.bloom{pointer-events:auto;max-width:100%;max-height:100%;flex-shrink:0;}
+.island-anchor-top-left{justify-content:flex-start;}
+.island-anchor-top-right{justify-content:flex-end;}
+.island-anchor-left{justify-content:flex-start;align-items:flex-start;}
+.island-anchor-right{justify-content:flex-end;align-items:flex-start;}
+.island-anchor-bottom{align-items:flex-end;}
+.bloom-placement-left,.bloom-placement-right,.bloom-placement-bottom{border-radius:20px!important;}
+.bloom-placement-left:before,.bloom-placement-left:after,.bloom-placement-right:before,.bloom-placement-right:after,.bloom-placement-bottom:before,.bloom-placement-bottom:after{display:none;}
+
+/* Compact calendar chrome must leave a usable time grid and a visible footer. */
+@container (max-width:400px){
+ .bloom .bloom-calendar .cal-toolbar{padding:6px 8px;gap:4px;flex-wrap:wrap;}
+ .bloom .bloom-calendar .cal-period{flex-basis:100%;min-width:0;}
+ .bloom .bloom-calendar .cal-period strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+ .bloom .bloom-calendar .cal-eyebrow{display:none;}
+ .bloom .bloom-calendar .cal-navigation{flex:1;}
+ .bloom .bloom-calendar .cal-view-tabs{order:3;width:100%;box-sizing:border-box;padding:2px;}
+ .bloom .bloom-calendar .cal-view-tabs button{flex:1;padding:4px;font-size:10px;}
+ .bloom .bloom-calendar .cs-calendar-actions{padding:4px 6px;gap:4px;flex-wrap:nowrap;}
+ .bloom .bloom-calendar .cs-calendar-actions button{padding:5px 6px;font-size:10px;min-width:0;white-space:nowrap;}
+ .bloom .bloom-calendar .cal-sources-button{gap:3px;}
+ .bloom .bloom-calendar .cal-sources-button>span{font-size:9px;}
+ .bloom .bloom-calendar .cal-search{margin:3px 8px 5px;}
+ .bloom .bloom-calendar .cal-search input{padding:6px 8px;font-size:11px;}
+ .bloom .bloom-calendar .cal-week-hint{padding:3px 8px 0;font-size:9px;line-height:1.3;}
+ .bloom .bloom-calendar .cal-footer{padding:5px 8px;}
+ .bloom .bloom-calendar .cal-footer>span{font-size:9px;min-width:0;}
+ .bloom .bloom-calendar .cal-footer small{font-size:8px;line-height:1.3;}
+ .bloom .bloom-calendar .cal-week-head{margin-top:3px;}
+ .bloom .bloom-calendar .cal-week-head button{padding:2px 0 4px;flex-direction:row;gap:3px;}
+}
+
 .bloom {
     display: flex;
     align-items: center;
@@ -44,16 +76,33 @@ img {
     flex-direction: column;
     position: relative;
     box-sizing: border-box;
+    container-type:size;
     /* No overflow:hidden — pseudo-elements for concave corners extend outside the box */
 
-    font-family:
-        "Inter",
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
+    font-family:var(--dn-font,"Segoe UI",sans-serif);
 
     transition: background 0.3s ease;
+}
+
+@container (max-height:330px){
+ .bloom .bloom-calendar .cal-toolbar{padding:2px 8px;gap:5px;}
+ .bloom .bloom-calendar .cal-eyebrow{display:none;}
+ .bloom .bloom-calendar .cal-period strong{font-size:14px;}
+ .bloom .bloom-calendar .cal-view-tabs{padding:1px;}
+ .bloom .bloom-calendar .cal-view-tabs button{padding:3px 6px;}
+ .bloom .bloom-calendar .cs-calendar-actions{padding:0 8px;gap:5px;}
+ .bloom .bloom-calendar .cs-calendar-actions button{padding:3px 6px;}
+ .bloom .bloom-calendar .cal-search{margin:2px 8px;}
+ .bloom .bloom-calendar .cal-search input{padding:4px 8px;}
+ .bloom .bloom-calendar .cal-week-hint{display:none;}
+ .bloom .bloom-calendar .cal-week-head{margin-top:0;}
+ .bloom .bloom-calendar .cal-week-head button{box-sizing:border-box;height:32px;min-height:32px;padding:0;}
+ .bloom .bloom-calendar .cal-span-section{max-height:26px;}
+ .bloom .bloom-calendar .cal-span-grid{--cal-banner-row-min:24px;padding-top:0;padding-bottom:0;}
+ .bloom .bloom-calendar .cal-span-label{padding:2px;line-height:1.25;}
+ .bloom .bloom-calendar .cal-span-event{box-sizing:border-box;min-height:24px;padding:3px 5px;}
+ .bloom .bloom-calendar .cal-footer{padding:2px 8px;}
+ .bloom .bloom-calendar .cal-footer small{line-height:1.2;font-size:8px;}
 }
 
 .bloom.expanded {
@@ -213,6 +262,17 @@ img {
     flex-shrink: 0;
 }
 .time-center .island-date{position:absolute;right:100%;margin-right:10px}
+.header-stacked-date .time-center .island-date{top:23px;left:50%;right:auto;transform:translateX(-50%);margin:0;font-size:9px;line-height:11px;}
+.main-row-inner.header-tight .time-flip-container{min-width:68px;}
+.header-tight .time{font-size:11px;white-space:nowrap;}
+.main-row-inner.header-tight .side-content{flex-basis:calc(50% - 34px);gap:3px;}
+.header-tight .passive-feature{gap:3px;}
+.header-tight .passive-feature .label{font-size:9px;white-space:nowrap;}
+.header-tight .passive-feature>div{zoom:.7;}
+.main-row-inner.header-minimal .side-content{position:absolute;top:36px;height:18px;max-width:50%;}
+.main-row-inner.header-minimal .side-content.left{left:0;}
+.main-row-inner.header-minimal .side-content.right{right:0;}
+.header-minimal .side-content>div:not(.passive-feature){display:none;}
 .main-row-inner .side-content{flex:0 0 calc(50% - 50px)}
 .main-row-inner .side-content.right{margin-left:auto}
 .expanded-status-row{display:flex;justify-content:space-between;gap:16px;width:100%;min-height:28px;flex-shrink:0;padding:0 4px;box-sizing:border-box;overflow:hidden}
@@ -313,6 +373,12 @@ img {
     margin-bottom: -0.5px;
     /* Optical adjustment for Inter font baseline */
 }
+
+/* Persistent header has one typographic baseline in both collapsed and open states. */
+html[data-bloom-unified=true] .main-row-inner .time{font-weight:600;letter-spacing:0;}
+html[data-bloom-unified=true] .main-row-inner .passive-feature .label{opacity:1;color:var(--bloom-text-secondary,var(--bloom-text-muted,#c8c8ce));font-variant-numeric:tabular-nums;margin-bottom:0;}
+html[data-bloom-unified=true] .main-row-inner .passive-feature>svg{stroke-width:1.65;color:var(--bloom-text-secondary,var(--bloom-text-muted,#c8c8ce));}
+html[data-bloom-unified=true] .main-row-inner .island-date{color:var(--bloom-text-secondary,var(--bloom-text-muted,#b6b6be));}
 
 .update-dot {
     position: absolute;
@@ -1680,3 +1746,57 @@ button.time-flip-container:focus-visible,.music-section-nav button:focus-visible
 .expanded-music-container > .compact-premium-layout { flex:1; min-height:0; }
 .bloom.expanded .main-row:has(.album-art) { height:36px; flex-shrink:0; }
 .bloom.expanded .main-row .album-art-large { width:24px; height:24px; }
+
+/* Unified shell: position and dimensions remain fixed while content opens. */
+html[data-bloom-unified=true] .bloom {
+ font-family:var(--dn-font,"Segoe UI Variable","Segoe UI",sans-serif);
+ box-shadow:0 8px 24px #0002;
+}
+html[data-bloom-unified=true] .bloom .bottom-row {
+ border-top-color:var(--bloom-border,#ffffff16);
+}
+html[data-bloom-unified=true] .bloom .marquee-content {
+ color:var(--bloom-text-secondary,var(--bloom-text-muted,#c8c8ce));
+}
+html[data-bloom-unified=true] .bloom :is(.album-art-placeholder,.art-placeholder-mini,.cmp-art-placeholder) {
+ background:var(--bloom-group-bg,#1a1a1e);
+ color:var(--bloom-text-secondary,var(--bloom-text-muted,#b6b6be));
+}
+html[data-bloom-unified=true] .bloom :is(.music-placeholder-svg,.visualizer-horizontal .bar-horizontal) {
+ filter:none;box-shadow:none;
+}
+html[data-bloom-unified=true] .bloom :is(.sleek-btn,.cmp-btn,.classic-audio-output-btn) {
+ color:var(--bloom-text,#f4f4f5);
+}
+html[data-bloom-unified=true] .bloom :is(.sleek-btn,.cmp-btn,.classic-audio-output-btn):hover {
+ background:var(--bloom-hover-bg,#ffffff12);
+}
+html[data-bloom-unified=true] .bloom :is(.sleek-btn,.cmp-btn,.classic-audio-output-btn,.cmp-output-item,.music-section-nav button):focus-visible {
+ outline:2px solid var(--bloom-accent,#d6d6de);outline-offset:2px;
+}
+html[data-bloom-unified=true] .bloom :is(.cmp-track-bar,.cmp-volume-track,.slider-track-premium) {
+ background:var(--bloom-border,#ffffff26);
+}
+html[data-bloom-unified=true] .bloom :is(.cmp-track-fill,.cmp-volume-fill,.slider-progress-fill) {
+ background:var(--bloom-text,#f4f4f5);box-shadow:none;
+}
+html[data-bloom-unified=true] .bloom .cmp-output-item {
+ border-radius:8px;color:var(--bloom-text-secondary,var(--bloom-text-muted,#b6b6be));
+}
+html[data-bloom-unified=true] .bloom .cmp-output-item:hover {
+ background:var(--bloom-hover-bg,#ffffff12);
+}
+html[data-bloom-unified=true] .bloom .cmp-output-item.active {
+ color:var(--bloom-text,#f4f4f5);background:var(--bloom-group-bg,#1a1a1e);
+}
+html[data-bloom-unified=true] .bloom .music-section-nav button {
+ background:transparent;border-color:var(--bloom-border,#ffffff20);
+ color:var(--bloom-text-secondary,var(--bloom-text-muted,#b6b6be));font-weight:500;
+}
+html[data-bloom-unified=true] .bloom .music-section-nav button:hover {
+ background:var(--bloom-hover-bg,#ffffff12);color:var(--bloom-text,#f4f4f5);
+}
+@media(prefers-reduced-motion:reduce){
+ html[data-bloom-unified=true] .bloom :is(.cmp-btn,.cmp-output-item,.time,.time-flip-container,.album-art,.slider-track-premium,.cmp-track-bar,.cmp-track-fill,.cmp-volume-fill){transition:none;}
+ html[data-bloom-unified=true] .bloom :is(.cmp-marquee,.marquee-content.should-animate){animation:none;}
+}

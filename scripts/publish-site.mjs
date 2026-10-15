@@ -17,6 +17,6 @@ if(JSON.stringify(actual)!==JSON.stringify([...files].sort()))throw new Error('U
 if(process.argv.includes('--check')){console.log(`Public tree verified: ${files.length} files, ${tree}`);process.exit(0);}
 run(['fetch','origin','gh-pages']);
 const parent=run(['rev-parse','FETCH_HEAD']);
-const commit=run(['-c','user.name=JapanDino','-c','user.email=klim.i.rumyantsev@gmail.com','commit-tree',tree,'-p',parent,'-m','docs: publish Dinox 4.2.0 product website']);
+const commit=run(['-c','user.name=JapanDino','-c','user.email=klim.i.rumyantsev@gmail.com','commit-tree',tree,'-p',parent,'-m',`docs: publish Dinox ${JSON.parse(readFileSync('package.json','utf8')).version} product website`]);
 run(['push','origin',`${commit}:refs/heads/gh-pages`]);
 console.log(`Published public site commit ${commit}; verify GitHub Pages deployment separately.`);

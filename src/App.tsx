@@ -1,16 +1,26 @@
-import {tr,locale,getLanguage} from './i18n/core';
+import {useDoNotDisturb} from './notifications/useDoNotDisturb';
+import {tx} from './desktopText';
+import {useAiLimits} from './aiLimits/useAiLimits';
+import {AiLimitsPanel,LimitsChip} from './aiLimits/AiLimits';
+import {tr,trError,locale,getLanguage} from './i18n/core';
+import {confirmedAdjustment} from './system/confirmedAdjustment';
 import { useShellHeartbeat } from './hooks/useShellHeartbeat';
 import { useBloomAppearance } from './appearance/BloomAppearance';
 import { useNotifications } from './notifications/useNotifications';
 import { NotificationPanel } from './notifications/NotificationPanel';
 import { motion, AnimatePresence, useAnimation, useReducedMotion } from "framer-motion";
 import { useEffect, useState, useCallback, useRef, memo } from "react";
-import { listen } from "@tauri-apps/api/event";
+import { listen, emit } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { getVersion } from "@tauri-apps/api/app";
 import type { UpdateCheckResult } from "./updater";
 import "./App.css";
+import './island/island.css';
+import {IslandSections,type IslandSection} from './island/IslandSections';
+import {SystemControls,type SystemPage} from './system/SystemControls';
+import {systemDefaults} from './system/model';
+import {parseDockDesign} from './dockDesign';
 import { CalendarPanel, UpcomingEvent, ReminderCard } from "./calendar/CalendarPanel";
 import { useCalendar, useReminders } from "./calendar/useCalendar";
 import { dayStart } from "./calendar/model";
@@ -18,32 +28,16 @@ import { useEcoMode, ProfilePicker } from "./components/PersonalOptions";
 import { usePersonalSetting } from "./components/PersonalFeatures";
 import { PersonalActions } from "./components/PersonalFeatures";
 import { shiftMonth, wheelStep } from "./personalLogic";
-import { initTheme } from "./theme";
 import { PlayIcon, PauseIcon, SkipBackIcon, SkipForwardIcon, VolumeLowIcon, VolumeHighIcon, MusicNoteIcon, HeadphonesIcon } from "./icons";
 import { CompactMediaPlayer } from "./CompactMediaPlayer";
 import { useWeather } from "./hooks/useWeather";
 import { useSettingsSync } from "./hooks/useSettingsSync";
+import {islandPosition,islandInsets,clampIslandSize} from './settings/islandGeometry';
 import type { WidgetConfig } from "./components/StatusWidgetConfig";
 import { Cpu, MemoryStick, HardDrive, ArrowUpDown, } from "lucide-react";
 // Simple SVG icons
-function WifiIcon({ connected }: {
-    connected: boolean;
-}) {
-    return (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity={connected ? 1 : 0.4}>
-      <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
-      <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
-      <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
-      <line x1="12" y1="20" x2="12.01" y2="20"/>
-    </svg>);
-}
-function TrayIcon() {
-    return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="6" height="6" rx="1"/>
-      <rect x="15" y="3" width="6" height="6" rx="1"/>
-      <rect x="15" y="15" width="6" height="6" rx="1"/>
-      <rect x="3" y="15" width="6" height="6" rx="1"/>
-    </svg>);
-}
+
+
 function BatteryIcon({ charging, level, threshold = 20 }: {
     charging: boolean;
     level: number;
@@ -59,11 +53,11 @@ function BatteryIcon({ charging, level, threshold = 20 }: {
         }}>
       <svg width="20" height="10" viewBox="0 0 20 10" fill="none">
         {/* Battery Shell - Centered at 9px within 20px width, ignoring the tip's offset */}
-        <rect x="2" y="0.75" width="14" height="8.5" rx="2.4" stroke="currentColor" strokeOpacity={0.35} strokeWidth="1.1"/>
+        <rect x="2" y="0.75" width="14" height="8.5" rx="2.4" stroke="currentColor" strokeOpacity={0.7} strokeWidth="1.1"/>
         {/* Battery Tip */}
-        <path d="M17.5 3.5V6.5" stroke="currentColor" strokeOpacity={0.35} strokeWidth="1.2" strokeLinecap="round"/>
+        <path d="M17.5 3.5V6.5" stroke="currentColor" strokeOpacity={0.7} strokeWidth="1.2" strokeLinecap="round"/>
         {/* Fill */}
-        <rect x="3.8" y="2.5" width={Math.max(0.5, (percentage / 100) * 10.4)} height="5" rx="1" fill={charging ? "#32D74B" : (percentage <= threshold ? "#FF453A" : "white")}/>
+        <rect x="3.8" y="2.5" width={Math.max(0.5, (percentage / 100) * 10.4)} height="5" rx="1" fill={charging ? "#32D74B" : (percentage <= threshold ? "#FF453A" : "currentColor")}/>
       </svg>
       {/* Charging Bolt - Centered on the battery body */}
       {charging && (<div style={{
@@ -193,15 +187,31 @@ const TitleMarquee = ({ title }: {
 function App() {
     useShellHeartbeat();
     useBloomAppearance();
-    const notifications = useNotifications();
+    const dnd = useDoNotDisturb();
+    const dndActive = dnd.enabled;
+    const notifications = useNotifications(dndActive);
+    const [noticeContentHeight,setNoticeContentHeight]=useState<number|null>(null);
     const reducedMotion = useReducedMotion();
-    useEffect(() => {
-        return initTheme();
-    }, []);
     const [time, setTime] = useState("");
     const [isHovered, setIsHovered] = useState(false);
+    const [controlPage,setControlPage]=useState<SystemPage>('quick');
+    const islandControlsRef=useRef<HTMLDivElement|null>(null);
     const hoverExitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => () => {if(hoverExitTimer.current)clearTimeout(hoverExitTimer.current);}, []);
+    const [calendarComposerOpen, setCalendarComposerOpen] = useState(false);
+    const aiLimits=useAiLimits();
+    const [aiLimitsOpen,setAiLimitsOpen]=useState(false);
+    const showAiLimits=aiLimitsOpen && !calendarComposerOpen;
+    const openAiLimits=()=>{if(calendarComposerOpenRef.current)return;setAiLimitsOpen(true);setIsHovered(true);};
+    useEffect(()=>{if(!aiLimits.codex&&!aiLimits.claude)setAiLimitsOpen(false);},[aiLimits.codex,aiLimits.claude]);
+    const calendarComposerOpenRef = useRef(false);
+    const onCalendarComposerChange = useCallback((open:boolean) => {
+        calendarComposerOpenRef.current = open;
+        setCalendarComposerOpen(open);
+        if (hoverExitTimer.current) clearTimeout(hoverExitTimer.current);
+        if (open) setIsHovered(true);
+    }, []);
+    const showNotifications = notifications.visible && !calendarComposerOpen && !showAiLimits;
     const [calendarPinned, setCalendarPinned] = useState(false);
     const [calendarDate, setCalendarDate] = useState(() => dayStart(new Date()));
     const eco = useEcoMode();
@@ -209,15 +219,30 @@ function App() {
     const [islandDate] = usePersonalSetting('bloom-island-date', 'false');
     const [islandBattery] = usePersonalSetting('bloom-island-battery', 'true');
     const [islandCpu] = usePersonalSetting('bloom-island-cpu', 'true');
+    const [islandPositionRaw] = usePersonalSetting('bloom-island-position', 'top-center');
+    const [islandDockRaw] = usePersonalSetting('bloom-dock-design', '{}');
+    const [islandDockEnabled] = usePersonalSetting('bloom-dock-enabled', 'true');
+    const placement = islandPosition(islandPositionRaw);
     const [showUpcoming] = usePersonalSetting(`bloom-profile-${profile}-upcoming`, profile === 'relax' ? 'false' : 'true');
     const [showActions] = usePersonalSetting(`bloom-profile-${profile}-actions`, 'true');
     const [reminderLead] = usePersonalSetting('bloom-calendar-reminder', '10');
     const calendar = useCalendar(Math.min(+calendarDate - 45 * 86400000, +dayStart(new Date()) - 86400000), Math.max(+calendarDate + 50 * 86400000, +dayStart(new Date()) + 30 * 86400000), eco);
-    const reminder = useReminders(calendar.events, Math.max(0, Math.min(30, Number(reminderLead) || 0)));
+    const reminder = useReminders(calendar.events, Math.max(0, Math.min(30, Number(reminderLead) || 0)), dndActive);
     const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight });
     useEffect(() => { const resize = () => setViewport({ width: window.innerWidth, height: window.innerHeight }); window.addEventListener('resize', resize); return () => window.removeEventListener('resize', resize); }, []);
     const [isReady, setIsReady] = useState(false);
     const [scale, setScale] = useState(() => parseFloat(localStorage.getItem("bloom-scale") || "1.0"));
+    const [dockLayout,setDockLayout]=useState<{edge:string;thickness:number;scale:number;width:number;height:number}|null>(null);
+    useEffect(()=>{
+        const off=listen<typeof dockLayout>('dock-workspace-layout',event=>{
+            const value=event.payload;
+            if(value&&['left','right','bottom'].includes(value.edge)&&[value.thickness,value.scale,value.width,value.height].every(v=>Number.isFinite(v)&&v>0)&&value.thickness<=Math.max(value.width,value.height))setDockLayout(value);
+        });
+        void off.then(()=>emit('dock-workspace-layout-request')).catch(()=>{});
+        return()=>{void off.then(f=>f());};
+    },[]);
+    const measuredDock=dockLayout&&dockLayout.scale===scale&&Math.abs(dockLayout.width-viewport.width)<2&&Math.abs(dockLayout.height-viewport.height)<2?{edge:dockLayout.edge,thickness:dockLayout.thickness/scale}:undefined;
+    const panelInsets = islandInsets(placement, islandDockRaw, islandDockEnabled !== 'false', viewport.height/scale,measuredDock);
     const [timeFormat24h, setTimeFormat24h] = useState(() => localStorage.getItem("bloom-time-format-24h") === "true");
     const [batteryLevel, setBatteryLevel] = useState(100);
     const [isCharging, setIsCharging] = useState(false);
@@ -281,14 +306,23 @@ function App() {
     const [albumArtUrl, setAlbumArtUrl] = useState<string | null>(null);
     const [albumArtKey, setAlbumArtKey] = useState(0);
     const [volume, setVolume] = useState(0.5);
-    const [wifiEnabled, setWifiEnabled] = useState(true);
-    const [bluetoothEnabled, setBluetoothEnabled] = useState(true);
-    const [batterySaverEnabled, setBatterySaverEnabled] = useState(false);
-    const [currentBrightness, setCurrentBrightness] = useState(50);
+
+
+
+
+    const [adjustmentError,setAdjustmentError]=useState('');
+    const volumeAdjustment=useRef<ReturnType<typeof confirmedAdjustment>|null>(null);
+
+    if(!volumeAdjustment.current)volumeAdjustment.current=confirmedAdjustment(.5,async value=>{
+        const actual=await invoke<unknown>('set_volume',{volume:value});return typeof actual==='number'?actual:value;
+    },setVolume,e=>setAdjustmentError(e?trError(String(e)):''));
+
+    useEffect(()=>()=>{volumeAdjustment.current?.cancelTimer();},[]);
     // System metrics for status widgets
-    const [cpuUsage, setCpuUsage] = useState(0);
-    const [ramUsage, setRamUsage] = useState(0);
-    const [diskSpace, setDiskSpace] = useState(0);
+    const [cpuUsage, setCpuUsage] = useState<number|null>(null);
+    const [ramUsage, setRamUsage] = useState<number|null>(null);
+    const [diskSpace, setDiskSpace] = useState<number|null>(null);
+    const [networkReady,setNetworkReady]=useState(false);
     const [netUpSpeed, setNetUpSpeed] = useState(0);
     const [netDownSpeed, setNetDownSpeed] = useState(0);
     const [statusWidgets, setStatusWidgets] = useState<WidgetConfig>({ left: ["weather"], right: ["battery"] });
@@ -346,7 +380,6 @@ function App() {
             return "smart";
         return raw;
     });
-    const [dndActive, setDndActive] = useState(false);
     const [dockEnabled, setDockEnabled] = useState(() => localStorage.getItem("bloom-dock-enabled") !== "false");
     const [isNotchHovered, setIsNotchHovered] = useState(false);
     const [isEdgeHovered, setIsEdgeHovered] = useState(false);
@@ -356,7 +389,7 @@ function App() {
     const dockEnabledInitial = useRef(true);
     const dockModeInitial = useRef(true);
     const notchModeInitial = useRef(true);
-    const isAnyInteraction = isHovered || isNotchHovered || isEdgeHovered || (notchMode !== 'hover' && (calendarPinned || !!reminder.active || notifications.visible));
+    const isAnyInteraction = calendarComposerOpen || isHovered || isNotchHovered || isEdgeHovered || (notchMode !== 'hover' && (calendarPinned || !!reminder.active || showNotifications));
     const isHidden = notchMode === 'hover' ? interactionState === 'none' && !isAnyInteraction : !startupAnimating && ((notchMode === 'smart' && isOverlapped && interactionState === 'none') ||
         (notchMode === 'peek' && interactionState === 'none' && !eventPeek));
     useEffect(() => {
@@ -371,14 +404,15 @@ function App() {
     }, [isAnyInteraction]);
     useEffect(() => {
         if (windowLabel === 'main') {
-            invoke('set_notch_hovered', { hovered: isNotchHovered }).catch(() => { });
+            invoke('set_notch_hovered', { hovered: isNotchHovered || calendarComposerOpen }).catch(() => { });
         }
-    }, [isNotchHovered, windowLabel]);
+    }, [isNotchHovered, calendarComposerOpen, windowLabel]);
     useEffect(() => {
         const updateRect = () => {
             if (bloomRef.current && windowLabel === 'main') {
                 const rect = bloomRef.current.getBoundingClientRect();
                 invoke('update_notch_rect', {
+                    visible: isVisible && !isHidden,
                     rect: {
                         x: Math.round(rect.x),
                         y: Math.round(rect.y),
@@ -397,7 +431,7 @@ function App() {
             window.removeEventListener('resize', updateRect);
             observer.disconnect();
         };
-    }, [isExpanded, isHidden, windowLabel, scale]);
+    }, [isExpanded, isHidden, isVisible, windowLabel, scale, placement, panelInsets.left, panelInsets.right, panelInsets.top, panelInsets.bottom]);
     useEffect(() => {
         if (!windowLabel)
             return;
@@ -629,7 +663,9 @@ function App() {
         const unlistenNotchEdgeHover = listen<boolean>("notch-edge-hover", (event) => {
             setIsEdgeHovered(event.payload);
         });
+        const unlistenDisplay=listen('display-layout-changed',()=>window.dispatchEvent(new Event('resize')));
         return () => {
+            void unlistenDisplay.then(f=>f());
             unlistenVisibility.then(f => f());
             unlistenNotchOverlap.then(f => f());
             unlistenNotchEdgeHover.then(f => f());
@@ -711,6 +747,7 @@ function App() {
     // Window height is now kept constant to prevent rendering layout lag and sharp corners
     const lastScrollTime = useRef(0);
     const handleWheel = (e: React.WheelEvent) => {
+        if (calendarComposerOpenRef.current || showAiLimits) return;
         const target = e.target as HTMLElement;
         if (target.closest('.bloom-calendar') || target.closest('.calendar-container') || target.closest('.timer-column')) {
             return;
@@ -806,7 +843,7 @@ function App() {
             triggerEventPeek(3000);
         }
         // Only auto-switch if music mode is enabled
-        if (settingsMusicModeEnabled && mediaInfo.has_media && isPlaying && bloomMode !== 'calendar' && bloomMode !== 'command-center' && !isHovered && !calendarPinned && (isNewTrackWhilePlaying || justStartedPlaying)) {
+        if (settingsMusicModeEnabled && mediaInfo.has_media && isPlaying && bloomMode !== 'calendar' && bloomMode !== 'command-center' && !isHovered && !calendarPinned && !calendarComposerOpen && (isNewTrackWhilePlaying || justStartedPlaying)) {
             // Switch if compact notch display is enabled OR we are hovered
             if (settingsMusicCompactNotch || isHovered) {
                 manualMusicRef.current = false;
@@ -815,7 +852,7 @@ function App() {
         }
         lastTrackRef.current = mediaInfo.title;
         lastPlayingRef.current = isPlaying;
-    }, [mediaInfo.has_media, isPlaying, mediaInfo.title, settingsMusicModeEnabled, settingsMusicCompactNotch, isHovered, bloomMode, notchMode, triggerEventPeek]);
+    }, [mediaInfo.has_media, isPlaying, mediaInfo.title, settingsMusicModeEnabled, settingsMusicCompactNotch, isHovered, bloomMode, notchMode, triggerEventPeek, calendarPinned, calendarComposerOpen]);
     // Auto-switch back from music if music stops for 5 seconds
     // Skip if user manually scrolled to music mode
     useEffect(() => {
@@ -909,26 +946,14 @@ function App() {
             volume: number;
             is_muted: boolean;
         }>("volume-change", (event) => {
-            setVolume(event.payload.volume);
+            volumeAdjustment.current?.receive(event.payload.volume);
         });
         return () => { unlisten.then(fn => fn()); };
     }, []);
-    // Load wifi/bluetooth/volume/brightness state on mount
-    useEffect(() => {
-        invoke<boolean>("get_wifi_state").then(setWifiEnabled).catch(() => { });
-        invoke<boolean>("get_bluetooth_state").then(setBluetoothEnabled).catch(() => { });
-        invoke<boolean>("get_battery_saver_state").then(setBatterySaverEnabled).catch(() => { });
-        invoke<number>("get_volume").then(setVolume).catch(() => { });
-        invoke<number>("get_brightness").then(setCurrentBrightness).catch(() => { });
-        // Poll battery saver state every 5s (since we can't listen for changes)
-        const interval = setInterval(() => {
-            invoke<boolean>("get_battery_saver_state").then(setBatterySaverEnabled).catch(() => { });
-        }, 5000);
-        return () => clearInterval(interval);
-    }, []);
+    useEffect(()=>{void invoke<number>('get_volume').then(setVolume).catch(()=>{});},[]);
     // Hidden metrics have no polling timer. A single in-flight sample avoids request buildup.
     const visibleMetrics = [...new Set([
-        ...(!isHovered && islandCpu === 'true' ? ['cpu'] : []),
+        ...(islandCpu === 'true' ? ['cpu'] : []),
         ...(isHovered && !(mediaInfo.has_media && bloomMode === 'music' && settingsMusicModeEnabled)
             ? [...statusWidgets.left, ...statusWidgets.right] : []),
     ].filter(id => ['cpu', 'ram', 'disk', 'net'].includes(id)))].sort().join(',');
@@ -942,12 +967,12 @@ function App() {
             await Promise.allSettled(ids.map(async id => {
                 if (id === 'net') {
                     const [up, down] = await invoke<[number, number]>('get_network_speed');
-                    if (alive) { setNetUpSpeed(up); setNetDownSpeed(down); }
+                    if (alive&&Number.isFinite(up)&&Number.isFinite(down)&&up>=0&&down>=0) { setNetUpSpeed(up); setNetDownSpeed(down);setNetworkReady(true); }
                 } else if (id === 'cpu' || id === 'ram' || id === 'disk') {
                     const command = {cpu: 'get_cpu_usage', ram: 'get_ram_usage', disk: 'get_disk_space'}[id];
                     if (!command) return;
                     const value = await invoke<number>(command);
-                    if (alive) ({cpu: setCpuUsage, ram: setRamUsage, disk: setDiskSpace}[id])?.(value);
+                    if (alive&&Number.isFinite(value)&&value>=0&&(id==='disk'||value<=100)) ({cpu: setCpuUsage, ram: setRamUsage, disk: setDiskSpace}[id])?.(value);
                 }
             }));
             running = false;
@@ -956,15 +981,6 @@ function App() {
         const interval = setInterval(fetchMetrics, eco ? 10000 : 3000);
         return () => { alive = false; clearInterval(interval); };
     }, [visibleMetrics, eco]);
-    // Listen for brightness changes
-    useEffect(() => {
-        const unlisten = listen<{
-            brightness: number;
-        }>("brightness-change", (event) => {
-            setCurrentBrightness(event.payload.brightness);
-        });
-        return () => { unlisten.then(fn => fn()); };
-    }, []);
     // Native Windows Media Controls - Listen for updates from background worker
     useEffect(() => {
         const unlisten = listen<MediaInfo>("media-update", (event) => {
@@ -1053,77 +1069,20 @@ function App() {
         await nextBack.start({ x: 0, transition: { duration: 0.18, ease: [0.4, 0, 0.2, 1] } });
         skipNext();
     }, [skipNext, nextFront, nextBack]);
-    const lastVolumeCallRef = useRef(0);
     const handleVolumeChange = useCallback((newVol: number) => {
-        setVolume(newVol);
-        const now = Date.now();
-        if (now - lastVolumeCallRef.current < 50)
-            return;
-        lastVolumeCallRef.current = now;
-        invoke("set_volume", { volume: newVol }).catch(() => { });
+        volumeAdjustment.current?.change(newVol);
     }, []);
     // Open WiFi settings
-    const openWifiSettings = useCallback(async () => {
-        try {
-            await invoke("open_wifi_settings");
-        }
-        catch (e) {
-            console.error("Failed to open WiFi settings:", e);
-        }
-    }, []);
+
     // WiFi toggle
-    const toggleWifi = useCallback(async () => {
-        const newState = !wifiEnabled;
-        setWifiEnabled(newState);
-        try {
-            await invoke("set_wifi_state", { enabled: newState });
-        }
-        catch (e) {
-            setWifiEnabled(!newState);
-            console.error("Failed to toggle WiFi:", e);
-        }
-    }, [wifiEnabled]);
+
     // Bluetooth toggle
-    const toggleBluetooth = useCallback(async () => {
-        const newState = !bluetoothEnabled;
-        setBluetoothEnabled(newState);
-        try {
-            await invoke("set_bluetooth_state", { enabled: newState });
-        }
-        catch (e) {
-            setBluetoothEnabled(!newState);
-            console.error("Failed to toggle Bluetooth:", e);
-        }
-    }, [bluetoothEnabled]);
+
     // Battery Saver - opens settings (no public API to toggle without admin)
-    const openBatterySaverSettings = useCallback(async () => {
-        try {
-            await invoke("open_battery_saver_settings");
-        }
-        catch (e) {
-            console.error("Failed to open Battery Saver settings:", e);
-        }
-    }, []);
-    // Brightness change with throttling
-    const lastBrightnessCallRef = useRef(0);
-    const handleBrightnessChange = useCallback((newVal: number) => {
-        setCurrentBrightness(newVal);
-        const now = Date.now();
-        if (now - lastBrightnessCallRef.current < 50)
-            return;
-        lastBrightnessCallRef.current = now;
-        invoke("set_brightness", { brightness: newVal }).catch(() => { });
-    }, []);
+
+
     // Open system tray (unhide taskbar and invoke Win+B)
-    const openSystemTray = useCallback(async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        try {
-            await invoke("open_system_tray");
-        }
-        catch (e) {
-            console.error("Failed to open system tray:", e);
-        }
-    }, []);
+
     const openSettingsWindow = useCallback(async () => {
         try {
             await invoke("open_settings_window");
@@ -1132,44 +1091,14 @@ function App() {
             console.error("Failed to open settings window:", e);
         }
     }, []);
-    const handleWifiRightClick = useCallback((e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        openWifiSettings();
-    }, [openWifiSettings]);
-    const toggleDockModeSetting = useCallback(async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        const nextMode = dockMode === "fixed" ? "smart" : dockMode === "smart" ? "peek" : "fixed";
-        setDockMode(nextMode);
-        localStorage.setItem("bloom-dock-mode", nextMode);
-        invoke("save_setting", { key: "bloom-dock-mode", value: nextMode }).catch(console.error);
-        try {
-            await invoke("change_dock_mode", { mode: nextMode });
-        }
-        catch (err) {
-            console.error("Failed to change dock mode:", err);
-        }
-    }, [dockMode]);
-    const toggleNotchModeSetting = useCallback(async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        const nextMode = notchMode === "fixed" ? "smart" : notchMode === "smart" ? "peek" : notchMode === 'peek' ? 'hover' : "fixed";
-        setNotchMode(nextMode);
-        localStorage.setItem("bloom-notch-mode", nextMode);
-        invoke("save_setting", { key: "bloom-notch-mode", value: nextMode }).catch(console.error);
-        try {
-            await invoke("change_notch_mode", { mode: nextMode });
-        }
-        catch (err) {
-            console.error("Failed to change notch mode:", err);
-        }
-    }, [notchMode]);
-    const handleBluetoothRightClick = useCallback((e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        invoke("open_bluetooth_settings");
-    }, []);
+
+
+
+
     const toggleCalendarMode = (e: React.MouseEvent) => {
         e.stopPropagation();
+        if (calendarComposerOpenRef.current) return;
+        setAiLimitsOpen(false);
         if (isTimerFinished) {
             resetTimer();
             return;
@@ -1202,22 +1131,22 @@ function App() {
             case "cpu":
                 return (<div className="passive-feature" key="cpu" title={tr("CPU Usage")}>
             <Cpu size={12} strokeWidth={2}/>
-            <span className="label">{cpuUsage}%</span>
+            <span className="label">{cpuUsage===null?'—':`${cpuUsage}%`}</span>
           </div>);
             case "ram":
                 return (<div className="passive-feature" key="ram" title={tr("RAM Usage")}>
             <MemoryStick size={12} strokeWidth={2}/>
-            <span className="label">{Math.round(ramUsage)}%</span>
+            <span className="label">{ramUsage===null?'—':`${Math.round(ramUsage)}%`}</span>
           </div>);
             case "disk":
                 return (<div className="passive-feature" key="disk" title={tr("Free Disk Space")}>
             <HardDrive size={12} strokeWidth={2}/>
-            <span className="label">{diskSpace}{tr("GB")}</span>
+            <span className="label">{diskSpace===null?'—':`${diskSpace}${tr('GB')}`}</span>
           </div>);
             case "net":
                 return (<div className="passive-feature" key="net" title={tr("Network Speed")}>
             <ArrowUpDown size={12} strokeWidth={2}/>
-            <span className="label">↑{formatBytes(netUpSpeed)} ↓{formatBytes(netDownSpeed)}</span>
+            <span className="label">{networkReady?`↑${formatBytes(netUpSpeed)} ↓${formatBytes(netDownSpeed)}`:'—'}</span>
           </div>);
             default:
                 return null;
@@ -1233,48 +1162,59 @@ function App() {
     // Music mode shows any time we have media info (playing or paused) and music mode setting is enabled
     const isMusicMode = mediaInfo.has_media && bloomMode === 'music' && settingsMusicModeEnabled;
     // Keep the clock and persistent indicators on one fixed rail while the shell expands.
-    const compactHeaderWidth = Math.min(
+    const compactHeaderWidth = clampIslandSize(Math.min(
         140 + (isMusicMode && settingsVisualizerEnabled && isPlaying ? 30 : 0)
         + (isMusicMode && settingsAlbumArtEnabled ? 30 : 0)
         + (islandDate === 'true' ? 90 : 0) + (islandBattery === 'true' ? 65 : 0) + (islandCpu === 'true' ? 65 : 0),
-        viewport.width / scale - 24);
+        viewport.width / scale - 24),36,{width:viewport.width/scale,height:viewport.height/scale},panelInsets).width;
+    const headerStacksDate=islandDate==='true'&&compactHeaderWidth<340;
+    const headerMinimal=compactHeaderWidth<150;
+    const baseHeaderHeight=headerMinimal?60:headerStacksDate?44:36;
+    const headerHeight=baseHeaderHeight+(aiLimits.codex||aiLimits.claude?24:0);
+    const showReminder = !!reminder.active && !showNotifications && !calendarComposerOpen && bloomMode !== 'calendar' && bloomMode !== 'command-center';
     const extraLeft = statusWidgets.left.filter(id => !(id === 'cpu' && islandCpu === 'true'));
     const extraRight = statusWidgets.right.filter(id => !(id === 'battery' && islandBattery === 'true'));
-    const showExtraStatus = !isMusicMode && isHovered && !notifications.visible && (extraLeft.length + extraRight.length > 0);
+    const overviewMetrics=[...new Set([...extraLeft,...extraRight])].filter(id=>['weather','cpu','ram','disk','net','battery'].includes(id)&&(id!=='weather'||(settingsWeatherEnabled&&temperature!==null)));
+    const metricLabels:Record<string,string>={weather:tx('Погода','Weather'),cpu:'CPU',ram:tx('Память','Memory'),disk:tx('Свободное место','Free space'),net:tx('Сеть','Network'),battery:tx('Заряд','Charge')};
+    const showSectionNav=(isHovered||bloomMode==='calendar')&&!showAiLimits&&!showNotifications&&!showReminder;
+    const selectSection=(section:IslandSection)=>{setAiLimitsOpen(false);setIsHovered(true);if(section==='command-center')setControlPage('quick');setBloomMode(section);};
+    const openControl=(page:SystemPage)=>{setControlPage(page);setBloomMode('command-center');setIsHovered(true);};
     // Calculate width dynamically based on enabled features
     const getDynamicWidth = () => {
-        if (notifications.visible)
+        if (showAiLimits) return Math.min(420, viewport.width / scale - 24);
+        if (showNotifications)
             return Math.min(440, viewport.width / scale - 24);
         if (isCalendarMode)
             return Math.max(300, Math.min(820, viewport.width / scale - 24));
-        if (reminder.active)
-            return 360;
+        if (showReminder)
+            return Math.min(400, viewport.width / scale - 24);
         if (bloomMode === 'command-center' && isHovered)
-            return 350;
+            return 390;
         if (bloomMode === 'status' && isHovered) {
             const totalWidgets = statusWidgets.left.length + statusWidgets.right.length;
-            return Math.max(300, Math.min(200 + totalWidgets * 50, 380));
+            return Math.max(330, Math.min(250 + totalWidgets * 30, 390));
         }
         if (isMusicMode && isHovered)
-            return mediaLayout === 'compact' ? 300 : 340;
+            return mediaLayout === 'compact' ? 360 : 380;
         if ((showPowerPulse || showLowBatteryPulse || showUpdatePulse) && !isHovered)
             return 200;
         return compactHeaderWidth;
     };
-    const getDynamicHeight = () => {
+    const getPanelHeight = () => {
         if (!isExpanded || !isVisible || isHidden) {
             return isImpacted ? 28.9 : 44.2;
         }
-        if (notifications.visible)
-            return Math.min(notifications.center ? 460 : 92 + notifications.popups.length * 165, viewport.height / scale - 16);
+        if (showAiLimits) return Math.min(520, viewport.height / scale - 16);
+        if (showNotifications)
+            return Math.min(notifications.center ? 460 : (noticeContentHeight??(104 + notifications.popups.length * 205)) + 36, viewport.height / scale - 16);
         if (bloomMode === 'calendar')
             return Math.max(250, Math.min(650, viewport.height / scale - 16));
-        if (reminder.active)
-            return 160;
+        if (showReminder)
+            return Math.min(230, viewport.height / scale - 16);
         if (bloomMode === 'command-center')
-            return isHovered ? 230 + (showExtraStatus ? 28 : 0) : 36;
+            return isHovered ? 600 : 36;
         if (bloomMode === 'status')
-            return isHovered ? 62 + (showExtraStatus ? 28 : 0) + (showActions === 'true' ? 36 : 0) + (showUpcoming === 'true' ? 34 : 0) : 36;
+            return isHovered ? 80 + Math.ceil(overviewMetrics.length/2)*78 + (showActions === 'true' ? 44 : 0) + (showUpcoming === 'true' ? 84 : 0) : 36;
         if (isMusicMode && isHovered) {
             const hasProgressBar = (mediaInfo.duration_ms ?? 0) > 0;
             let h = mediaLayout === 'compact' ? (hasProgressBar ? 132 : 116) : 120;
@@ -1286,7 +1226,18 @@ function App() {
         }
         return 36;
     };
+    const getDynamicHeight=()=>{const height=getPanelHeight();return height>=36?height+headerHeight-36+(showSectionNav?40:0):height;};
     const isCalendarMode = bloomMode === 'calendar';
+    const composerWasOpen = useRef(false);
+    useEffect(() => {
+        const closed = composerWasOpen.current && !calendarComposerOpen;
+        composerWasOpen.current = calendarComposerOpen;
+        if (closed && !bloomRef.current?.matches(':hover') && !(calendarPinned && notchMode !== 'hover')) {
+            setIsHovered(false);
+            setBloomMode(mediaInfo.has_media && isPlaying && settingsMusicCompactNotch ? 'music' : 'status');
+        }
+    }, [calendarComposerOpen, calendarPinned, notchMode, mediaInfo.has_media, isPlaying, settingsMusicCompactNotch]);
+
     // Close compact media player expansions when notch is unhovered or mode changes
     useEffect(() => {
         if (mediaLayout === 'compact') {
@@ -1302,12 +1253,12 @@ function App() {
           </>)}
       </AnimatePresence>
 
-      <div style={{ zoom: scale, width: '100%', display: 'flex', justifyContent: 'center' }}>
-        <motion.div ref={bloomRef} className={`bloom ${isHovered ? 'expanded' : ''} ${isImpacted ? 'is-impacted' : ''}`} onMouseEnter={() => setIsNotchHovered(true)} onMouseLeave={() => setIsNotchHovered(false)} onWheel={handleWheel} initial={{ y: -44, width: 30.6, height: 44.2, borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, scaleX: 1, scaleY: 1, opacity: 0 }} animate={{
-            y: !isReady ? -44 : (isVisible ? (isHidden ? -100 : 0) : -150),
-            width: !isReady ? 34 : (isExpanded && isVisible && !isHidden ? Math.max(compactHeaderWidth,getDynamicWidth()) : (isImpacted ? 39.1 : 30.6)),
-            height: !isReady ? 34 : getDynamicHeight(),
-            opacity: isVisible ? 1 : 0,
+      <div className={`island-anchor island-anchor-${placement}`} style={{ zoom: scale, width: viewport.width/scale, height: viewport.height/scale, paddingLeft: panelInsets.left, paddingRight: panelInsets.right, paddingTop: panelInsets.top, paddingBottom: panelInsets.bottom }}>
+        <motion.div ref={bloomRef} className={`bloom island-designed bloom-placement-${placement} ${isHovered ? 'expanded' : ''} ${isImpacted ? 'is-impacted' : ''}`} onMouseEnter={() => setIsNotchHovered(true)} onMouseLeave={() => setIsNotchHovered(false)} onWheel={handleWheel} initial={{ y: -44, width: 30.6, height: 44.2, borderTopLeftRadius: 18, borderTopRightRadius: 18, borderBottomLeftRadius: 18, borderBottomRightRadius: 18, scaleX: 1, scaleY: 1, opacity: 0 }} animate={{
+            y: placement.startsWith('top') ? (!isReady ? -44 : (isVisible ? (isHidden ? -100 : 0) : -150)) : 0,
+            width: clampIslandSize(!isReady ? 34 : (isExpanded && isVisible && !isHidden ? Math.max(compactHeaderWidth,getDynamicWidth()) : (isImpacted ? 39.1 : 30.6)), getDynamicHeight(), {width:viewport.width/scale,height:viewport.height/scale}, panelInsets).width,
+            height: !isReady ? 34 : clampIslandSize(getDynamicWidth(),getDynamicHeight(),{width:viewport.width/scale,height:viewport.height/scale},panelInsets).height,
+            opacity: isVisible && !isHidden ? 1 : 0,
             scaleX: 1,
             scaleY: 1,
             borderTopLeftRadius: isImpacted ? 0 : 18,
@@ -1315,7 +1266,7 @@ function App() {
             borderBottomLeftRadius: isCalendarMode ? 28 : 18,
             borderBottomRightRadius: isCalendarMode ? 28 : 18,
             filter: isVisible ? "blur(0px)" : "blur(8px)",
-            pointerEvents: isVisible ? 'auto' : 'none'
+            pointerEvents: isVisible && !isHidden ? 'auto' : 'none'
         }} onClick={(e) => {
             e.stopPropagation();
         }} onHoverStart={() => {
@@ -1323,10 +1274,12 @@ function App() {
             setIsHovered(true);
             // Hover expands the current section; it never replaces a pending clock click.
         }} onHoverEnd={() => {
-            if (calendarPinned && notchMode !== 'hover')
+            setAiLimitsOpen(false);
+            if (calendarComposerOpenRef.current || (calendarPinned && notchMode !== 'hover'))
                 return;
             if(hoverExitTimer.current)clearTimeout(hoverExitTimer.current);
             hoverExitTimer.current=setTimeout(()=>{
+            if (calendarComposerOpenRef.current) return;
             setIsHovered(false);
             const targetMode = mediaInfo.has_media && isPlaying && settingsMusicCompactNotch ? 'music' : 'status';
             if (bloomMode === 'music') {
@@ -1343,16 +1296,16 @@ function App() {
         }}>
 
         <AnimatePresence>
-          {!notifications.visible && isMusicMode && settingsAmbienceEnabled && !eco && albumArtUrl && isHovered && !isCalendarMode && (<motion.div className="notch-ambient-glow" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+          {!showNotifications && isMusicMode && settingsAmbienceEnabled && !eco && albumArtUrl && isHovered && !isCalendarMode && (<motion.div className="notch-ambient-glow" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
               <AnimatePresence mode="wait">
                 <motion.img key={albumArtUrl} src={albumArtUrl} alt="" draggable={false} initial={{ opacity: 0, scale: 1.1 }} animate={{ opacity: 1, scale: 1.8 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}/>
               </AnimatePresence>
             </motion.div>)}
         </AnimatePresence>
         <AnimatePresence mode="wait">
-          {isExpanded && (<motion.div key="bloom-content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1 }} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', borderRadius: 'inherit', overflow:'hidden' }}>
-                  <motion.div key="standard-view-group" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} style={{ width: compactHeaderWidth - 24, maxWidth: '100%', flexShrink: 0 }}>
-                    <div className="main-row">
+          {isExpanded && (<motion.div key="bloom-content" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.1 }} style={{ width: '100%', height: '100%', display: 'flex', flexDirection: placement==='bottom'?'column-reverse':'column', alignItems: 'center', position: 'relative', borderRadius: 'inherit', overflow:'hidden' }}>
+                  <motion.div key="standard-view-group" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.16 }} style={{ width: compactHeaderWidth - 24, maxWidth: '100%', flexShrink: 0, alignSelf: placement==='left'||placement==='top-left'?'flex-start':placement==='right'||placement==='top-right'?'flex-end':undefined }}>
+                    <div className="main-row" style={{height:baseHeaderHeight}}>
                       <AnimatePresence mode="wait">
                         {(showPowerPulse || showLowBatteryPulse || showUpdatePulse) && !isHovered ? (showUpdatePulse ? (<motion.div key="update-pulse-view" initial={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }} animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }} exit={{ opacity: 0, scale: 1.05, filter: "blur(4px)" }} className="power-pulse-content">
                               <GreenDownArrowIcon />
@@ -1363,7 +1316,7 @@ function App() {
                               <span className="label" style={{ color: showLowBatteryPulse ? "#FF453A" : "inherit" }}>
                                 {showLowBatteryPulse ? tr("Low Battery") : (isCharging ? tr("Charging") : tr("On Battery"))} • {batteryLevel}%
                               </span>
-                            </motion.div>)) : (<motion.div key="standard-view" className="main-row-inner" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                            </motion.div>)) : (<motion.div key="standard-view" className={`main-row-inner${headerStacksDate?' header-stacked-date':''}${compactHeaderWidth<240?' header-tight':''}${headerMinimal?' header-minimal':''}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                             {/* Left: visualizer (music) or weather (command-center, calendar) */}
                             <div className="side-content left">
                               {islandCpu === 'true' && renderStatusWidget('cpu')}
@@ -1425,15 +1378,17 @@ function App() {
                           </motion.div>)}
                       </AnimatePresence>
                     </div>
+                    {(aiLimits.codex||aiLimits.claude)&&<div className="ai-limits-rail">
+                      {aiLimits.codex&&<LimitsChip limits={aiLimits.snapshot.codex} onOpen={openAiLimits}/>}
+                      {aiLimits.claude&&<LimitsChip limits={aiLimits.snapshot.claude} onOpen={openAiLimits}/>}
+                    </div>}
                   </motion.div>
-              {showExtraStatus && <div className="expanded-status-row"><div className="passive-features-group">{extraLeft.map(renderStatusWidget)}</div><div className="passive-features-group">{extraRight.map(renderStatusWidget)}</div></div>}
+              {showAiLimits ? <AiLimitsPanel model={aiLimits} onClose={()=>setAiLimitsOpen(false)}/> : <>
+              {showSectionNav&&<IslandSections current={bloomMode} calendar={settingsCalendarEnabled} music={mediaInfo.has_media&&settingsMusicModeEnabled} onSelect={selectSection}/>}
               <AnimatePresence mode="wait">
-                {!notifications.visible && isHovered && isMusicMode && !isCalendarMode && (<motion.div key="expanded-music" className="expanded-music-container" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.1 } }} transition={{ type: "spring", stiffness: 500, damping: 30 }}>
-                    <nav className="music-section-nav" aria-label={tr("Разделы Dinox")}>
-                      <button onClick={() => setBloomMode('status')}>{tr("Панель")}</button>
-                      <button onClick={() => setBloomMode('command-center')}>{tr("Управление")}</button>
-                    </nav>
-                    {mediaLayout === 'compact' ? (<CompactMediaPlayer mediaInfo={mediaInfo} albumArtUrl={albumArtUrl} albumArtKey={albumArtKey} isPlaying={isPlaying} volume={volume} volumeExpanded={compactVolumeExpanded} onVolumeExpandedChange={setCompactVolumeExpanded} onTogglePlayPause={togglePlayPause} onVolumeChange={handleVolumeChange} prevFront={prevFront} prevBack={prevBack} nextFront={nextFront} nextBack={nextBack} onAnimatePrev={animatePrev} onAnimateNext={animateNext} onLayoutChange={(layout) => {
+                {!showNotifications && !showReminder && isHovered && isMusicMode && !isCalendarMode && (<motion.div key="expanded-music" className="expanded-music-container" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.1 } }} transition={{ type: "spring", stiffness: 500, damping: 30 }}>
+
+                    {mediaLayout === 'compact' ? (<CompactMediaPlayer onOutput={()=>openControl('audio')} mediaInfo={mediaInfo} albumArtUrl={albumArtUrl} albumArtKey={albumArtKey} isPlaying={isPlaying} volume={volume} volumeExpanded={compactVolumeExpanded} onVolumeExpandedChange={setCompactVolumeExpanded} onTogglePlayPause={togglePlayPause} onVolumeChange={handleVolumeChange} prevFront={prevFront} prevBack={prevBack} nextFront={nextFront} nextBack={nextBack} onAnimatePrev={animatePrev} onAnimateNext={animateNext} onLayoutChange={(layout) => {
                         setMediaLayout(layout);
                         localStorage.setItem("bloom-media-layout", layout);
                         window.dispatchEvent(new CustomEvent("settings-changed", { detail: { key: "media-layout", value: layout } }));
@@ -1463,7 +1418,7 @@ function App() {
                             <div className="header-visualizer">
                               <Visualizer isPlaying={isPlaying} bars={5} height={18}/>
                             </div>
-                            <motion.button className="classic-audio-output-btn" onClick={(e) => { e.stopPropagation(); invoke('open_sound_settings').catch(() => { }); }} whileTap={{ scale: 0.9 }} title={tr("Audio Output")}>
+                            <motion.button className="classic-audio-output-btn" onClick={(e) => { e.stopPropagation(); openControl('audio'); }} whileTap={{ scale: 0.9 }} title={tr("Audio Output")}>
                               <HeadphonesIcon size={20} style={{ opacity: 0.5 }}/>
                             </motion.button>
                           </div>
@@ -1515,116 +1470,17 @@ function App() {
                   </motion.div>)}
               </AnimatePresence>
 
-              <AnimatePresence>{notifications.visible && <NotificationPanel key="notifications" model={notifications}/>}</AnimatePresence>
-              {!notifications.visible && bloomMode === 'status' && isHovered && <><ProfilePicker />{showActions === 'true' && <PersonalActions />}{showUpcoming === 'true' && <UpcomingEvent events={calendar.events} onOpen={() => setBloomMode('calendar')}/>}</>}
-              {!notifications.visible && reminder.active && <ReminderCard reminder={reminder}/>}
+              <AnimatePresence>{showNotifications && <NotificationPanel key="notifications" model={notifications} onContentHeight={setNoticeContentHeight}/>}</AnimatePresence>
+              {!showNotifications && !showReminder && bloomMode === 'status' && isHovered && <section className="island-overview" aria-label={tx('Обзор','Overview')}><details className="island-profile"><summary>{tx('Профиль','Profile')}: {profile==='study'?tx('Учёба','Study'):profile==='relax'?tx('Отдых','Relax'):tx('Работа','Work')}</summary><ProfilePicker /></details>{!!overviewMetrics.length&&<div className="island-metrics">{overviewMetrics.map(id=><div className="island-metric" key={id} data-metric={id}><small>{metricLabels[id]}</small>{renderStatusWidget(id)}{(id==='ram'&&ramUsage!==null||id==='cpu'&&cpuUsage!==null)&&<meter min={0} max={100} value={(id==='ram'?ramUsage:cpuUsage)??0} aria-label={metricLabels[id]}/>}</div>)}</div>}{showActions === 'true' && <PersonalActions onAction={id=>{if(id==='wifi')openControl('wifi');else if(id==='sound')openControl('audio');else if(id==='battery')openControl('power');else if(id==='notifications')notifications.showCenter();else if(id==='settings')openSettingsWindow();}}/>}{showUpcoming === 'true' && <div className="island-schedule"><h2>{tx('Ближайшее событие','Up next')}</h2><UpcomingEvent events={calendar.events} onOpen={() => setBloomMode('calendar')}/></div>}</section>}
+              {showReminder && <ReminderCard reminder={reminder}/>}
+              {adjustmentError&&isMusicMode&&<p className="island-action-error" role="alert">{adjustmentError}</p>}
+              {dnd.error && <p role="alert" className="notice-error">{tx("Не удалось сохранить режим «Не беспокоить».", dnd.error)}</p>}
 
-              {/* Command Center Panel */}
-              <AnimatePresence>
-                {!notifications.visible && bloomMode === 'command-center' && (<motion.div className="command-center-content-minimal" onClick={e => e.stopPropagation()} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.1 } }} transition={{ type: "spring", stiffness: 400, damping: 30 }}>
-                    {/* Pills Grid */}
-                    <div className="cc-pills-grid">
-                      {/* Wi-Fi Pill */}
-                      <div className={`cc-pill-tile ${wifiEnabled ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); toggleWifi(); }} onContextMenu={handleWifiRightClick} title={tr("Left-click to toggle, Right-click for Settings")}>
-                        <div className="cc-pill-icon-wrapper">
-                          <WifiIcon connected={wifiEnabled}/>
-                        </div>
-                        <div className="cc-pill-info">
-                          <span className="cc-pill-title">Wi-Fi</span>
-                          <span className="cc-pill-status">{wifiEnabled ? tr("Connected") : tr("Off")}</span>
-                        </div>
-                      </div>
-
-                      {/* Dock Mode Pill */}
-                      <div className={`cc-pill-tile ${dockMode === 'fixed' ? 'active' : ''}`} onClick={toggleDockModeSetting} title={tr("Cycle dock mode: Fixed / Smart / Peek")}>
-                        <div className="cc-pill-icon-wrapper">
-                          <DockIcon />
-                        </div>
-                        <div className="cc-pill-info">
-                          <span className="cc-pill-title">{tr("Dock Mode")}</span>
-                          <span className="cc-pill-status">{dockMode === 'fixed' ? tr("Fixed") : dockMode === 'smart' ? tr("Smart") : tr("Peek")}</span>
-                        </div>
-                      </div>
-
-                      {/* Bluetooth Pill */}
-                      <div className={`cc-pill-tile ${bluetoothEnabled ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); toggleBluetooth(); }} onContextMenu={handleBluetoothRightClick} title={tr("Left-click to toggle, Right-click for Settings")}>
-                        <div className="cc-pill-icon-wrapper">
-                          <BluetoothIcon />
-                        </div>
-                        <div className="cc-pill-info">
-                          <span className="cc-pill-title">Bluetooth</span>
-                          <span className="cc-pill-status">{bluetoothEnabled ? tr("On") : tr("Off")}</span>
-                        </div>
-                      </div>
-
-                      {/* Notch Mode Pill */}
-                      <div className={`cc-pill-tile ${notchMode === 'fixed' ? 'active' : ''}`} onClick={toggleNotchModeSetting} title={tr("Cycle notch mode: Fixed / Smart / Peek")}>
-                        <div className="cc-pill-icon-wrapper">
-                          <NotchIcon />
-                        </div>
-                        <div className="cc-pill-info">
-                          <span className="cc-pill-title">{tr("Notch Mode")}</span>
-                          <span className="cc-pill-status">{notchMode === 'fixed' ? tr("Fixed") : notchMode === 'smart' ? tr("Smart") : notchMode === 'hover' ? tr('Только при наведении') : tr("Peek")}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Circular Actions Row */}
-                    <div className="cc-circular-actions-row">
-                      <button className={`cc-circular-btn ${dndActive ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); setDndActive(prev => !prev); }} title={tr("Focus / DND: {0}", dndActive ? tr("On") : tr("Off"))}>
-                        <MoonIcon />
-                      </button>
-                      <button className={`cc-circular-btn ${batterySaverEnabled ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); openBatterySaverSettings(); }} title={tr("Energy Saver: {0} — Click to open Settings", batterySaverEnabled ? tr("On") : tr("Off"))}>
-                        <BatterySaverIcon />
-                      </button>
-                      <button className="cc-circular-btn" onClick={(e) => { e.stopPropagation(); openSystemTray(e); }} title={tr("System Tray")}>
-                        <TrayIcon />
-                      </button>
-                      <button className="cc-circular-btn" onClick={(e) => { e.stopPropagation(); invoke("open_notification_center"); }} title={tr("Notification Center")}>
-                        <BellIcon />
-                      </button>
-                      <button className="cc-circular-btn" onClick={(e) => { e.stopPropagation(); openSettingsWindow(); }} title={tr("Dinox Settings")}>
-                        <SettingsIcon />
-                      </button>
-                      <button className="cc-circular-btn" onClick={(e) => { e.stopPropagation(); invoke("restart_bloom"); }} title={tr("Restart Dinox")}>
-                        <ReloadIcon />
-                      </button>
-                    </div>
-
-                    {/* Classic Sliders Area */}
-                    <div className="cc-classic-sliders-area">
-                      {/* Volume Slider */}
-                      <div className="cc-classic-slider-row">
-                        <div className="cc-classic-slider-label">
-                          <VolumeLowIcon style={{ opacity: 0.5 }}/>
-                          <span>{tr("Volume")}</span>
-                        </div>
-                        <div className="cc-classic-slider-track">
-                          <input type="range" min="0" max="1" step="0.01" value={volume} onChange={(e) => handleVolumeChange(parseFloat(e.target.value))} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} className="cc-classic-input"/>
-                          <div className="cc-classic-fill" style={{ width: `${volume * 100}%` }}/>
-                        </div>
-                        <span className="cc-classic-percentage">{Math.round(volume * 100)}%</span>
-                      </div>
-
-                      {/* Brightness Slider */}
-                      <div className="cc-classic-slider-row">
-                        <div className="cc-classic-slider-label">
-                          <BrightnessLowIcon />
-                          <span>{tr("Brightness")}</span>
-                        </div>
-                        <div className="cc-classic-slider-track">
-                          <input type="range" min="0" max="100" step="1" value={currentBrightness} onChange={(e) => handleBrightnessChange(parseInt(e.target.value))} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} className="cc-classic-input"/>
-                          <div className="cc-classic-fill" style={{ width: `${currentBrightness}%` }}/>
-                        </div>
-                        <span className="cc-classic-percentage">{currentBrightness}%</span>
-                      </div>
-                    </div>
-                  </motion.div>)}
-              </AnimatePresence>
+              {!showNotifications&&!showReminder&&bloomMode==='command-center'&&isHovered&&<SystemControls key={controlPage} inline initialPage={controlPage} options={systemDefaults} design={parseDockDesign(islandDockRaw)} open onOpen={open=>{if(!open)setBloomMode('status');}} panelRef={islandControlsRef} eco={eco}/>}
 
               {/* Calendar & Timer Split View */}
               <AnimatePresence>
-                {!notifications.visible && settingsCalendarEnabled && isCalendarMode && (<CalendarPanel model={calendar} date={calendarDate} onDate={setCalendarDate} pinned={calendarPinned} onPinned={() => setCalendarPinned(p => !p)} eco={eco} timer={<div className="timer-section-new">
+                {!showNotifications && settingsCalendarEnabled && isCalendarMode && (<CalendarPanel onComposerOpenChange={onCalendarComposerChange} model={calendar} date={calendarDate} onDate={setCalendarDate} pinned={calendarPinned} onPinned={() => setCalendarPinned(p => !p)} eco={eco} timer={<div className="timer-section-new">
                         <div className="timer-display-large">
                           <span className="timer-time-large">{formatTimerTime(timerSeconds)}</span>
                         </div>
@@ -1644,6 +1500,7 @@ function App() {
                       </div>}/>)}
               </AnimatePresence>
 
+              </>}
             </motion.div>)}
         </AnimatePresence>
 
@@ -1705,58 +1562,13 @@ export function Calendar() {
       </div>
     </div>);
 }
-function BluetoothIcon() {
-    return (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M6.5 6.5l11 11L12 23V1l5.5 5.5-11 11"/>
-    </svg>);
-}
-function SettingsIcon() {
-    return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.9 }}>
-      <circle cx="12" cy="12" r="3"/>
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-    </svg>);
-}
-function BrightnessLowIcon() {
-    return (<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
-      <circle cx="12" cy="12" r="5" fill="currentColor"/>
-    </svg>);
-}
-function MoonIcon() {
-    return (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-    </svg>);
-}
-function DockIcon() {
-    return (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="14" width="20" height="8" rx="2"/>
-      <line x1="6" y1="18" x2="6.01" y2="18" strokeWidth="3.5" strokeLinecap="round"/>
-      <line x1="10" y1="18" x2="10.01" y2="18" strokeWidth="3.5" strokeLinecap="round"/>
-      <line x1="14" y1="18" x2="14.01" y2="18" strokeWidth="3.5" strokeLinecap="round"/>
-      <line x1="18" y1="18" x2="18.01" y2="18" strokeWidth="3.5" strokeLinecap="round"/>
-    </svg>);
-}
-function NotchIcon() {
-    return (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 3h16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
-      <path d="M9 9v4a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2V9"/>
-    </svg>);
-}
-function BellIcon() {
-    return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9z"/>
-      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-    </svg>);
-}
-function ReloadIcon() {
-    return (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-    </svg>);
-}
-function BatterySaverIcon() {
-    return (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="7" width="16" height="10" rx="2"/>
-      <path d="M22 11v2"/>
-      <path d="M6 12h4l2-3v6l-2-3H6"/>
-    </svg>);
-}
+
+
+
+
+
+
+
+
+
 export default App;

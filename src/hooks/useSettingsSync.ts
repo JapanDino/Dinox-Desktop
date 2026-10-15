@@ -38,6 +38,8 @@ export function useSettingsSync(
         const handler = handlersRef.current[key];
         if (handler && value !== null && value !== undefined) {
           handler(convertSettingValue(value));
+        } else if (handler && value === null && key === 'bloom-weather-city') {
+          handler('');
         }
       }
     );
@@ -56,6 +58,8 @@ export function useSettingsSync(
         const handler = handlersRef.current[key];
         if (handler && value !== null && value !== undefined) {
           handler(convertSettingValue(value));
+        } else if (handler && value === null && key === 'bloom-weather-city') {
+          handler('');
         }
       }
     );

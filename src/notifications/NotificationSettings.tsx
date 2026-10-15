@@ -1,3 +1,5 @@
+import {useDoNotDisturb} from './useDoNotDisturb';
+import {tx} from '../desktopText';
 import {NotificationConnection} from './NotificationConnection';
 import {tr,trError} from '../i18n/core';
 import { useBloomAppearance } from '../appearance/BloomAppearance';
@@ -10,6 +12,7 @@ import { SettingRow } from '../settings/SettingRow';
 import { notificationDefaults, parseNotificationOptions, sampleNotice, type Notice, type NotificationOptions } from './model';
 import { NotificationCard } from './NotificationPanel';
 export function NotificationSettings() {
+    const dnd = useDoNotDisturb();
     const unified = useBloomAppearance();
     const [raw, save] = usePersonalSetting('bloom-notifications', JSON.stringify(notificationDefaults));
     const o = parseNotificationOptions(raw);
@@ -46,6 +49,7 @@ export function NotificationSettings() {
     const statusText: Record<string, string> = { checking: tr("Проверка доступности…"), package_required: tr("Компонент уведомлений Windows не зарегистрирован. Установите его вместе с Dinox и перезапустите приложение."), allowed: o.enabled && o.windowsEnabled ? tr("Доступ Windows разрешён. Ниже можно проверить получение сообщений.") : tr("Выключено. Доступ Windows уже разрешён."), denied: tr("Доступ запрещён. Разрешение можно изменить в параметрах конфиденциальности Windows."), not_requested: tr("Windows ещё не запрашивала разрешение."), unavailable: tr("Windows API уведомлений недоступен.") };
     const appList = [...new Map(apps.map(n => [n.app_id, n])).values()];
     return <div className="notification-settings"><div className="setting-group-label">{tr("Уведомления Dinox")}</div><div className="setting-group"><SettingRow icon={Bell} label={tr("Уведомления Dinox")} desc={busy?tr("Ожидание Windows…"):statusText[access] || access}><label className="toggle-switch"><input aria-label={tr("Уведомления Dinox")} type="checkbox" disabled={busy || access==='checking'} checked={o.enabled && o.windowsEnabled && access==='allowed'} onChange={e => void toggle(e.target.checked)}/><span className="slider"/></label></SettingRow><div className="notice-preview"><NotificationCard notice={sampleNotice} options={o}/><small>{tr("Пример оформления \u00B7 не настоящее сообщение")}</small></div></div>
+ <div className="setting-group"><SettingRow icon={Moon} label={tx('Не беспокоить Dinox', 'Do Not Disturb Dinox')} desc={tx('Без всплывающих уведомлений и напоминаний. История остаётся доступна. Режим Windows не меняется.', 'Suppress popups and reminders. History remains available. Windows settings are unchanged.')}><label className="toggle-switch"><input type="checkbox" aria-label={tx('Не беспокоить Dinox', 'Do Not Disturb Dinox')} disabled={dnd.pending} checked={dnd.enabled} onChange={event => void dnd.setEnabled(event.target.checked)}/><span className="slider"/></label></SettingRow>{dnd.error && <p className="notice-error" role="alert">{tx('Не удалось сохранить режим «Не беспокоить».', dnd.error)}</p>}</div>
  <NotificationConnection enabled={o.enabled && o.windowsEnabled}/>{unified && <p className="notice-explanation">{tr("Оформление связано с календарём и доком. Отдельные темы доступны, если выключить \u00ABЕдиный стиль Dinox\u00BB в Appearance.")}</p>}
  {o.enabled && <><div className="setting-group-label">{tr("Оформление и поведение")}</div><div className="setting-group">{([['style', tr("Оформление"), [['glass', tr("Стекло")], ['solid', tr("Плотная карточка")], ['minimal', tr("Минимальное")]]], ['privacy', tr("Содержимое"), [['full', tr("Заголовок и текст")], ['title', tr("Только заголовок")], ['hidden', tr("Только приложение")]]]] as [
             keyof NotificationOptions,

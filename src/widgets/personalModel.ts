@@ -2,6 +2,8 @@ export type Task = {id:string;text:string;done:boolean;due?:string};
 export function validDate(value:unknown):boolean{if(value==='')return true;if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const d=new Date(value+'T12:00:00Z');return Number.isFinite(+d)&&d.toISOString().slice(0,10)===value;}
 export type ProjectLink = {id:string;name:string;target:string};
 export const widgetCatalog=[{id:'tasks',ru:'Задачи',en:'Tasks'},{id:'note',ru:'Заметки',en:'Notes'},{id:'projects',ru:'Мои проекты',en:'My projects'},{id:'music',ru:'Музыка',en:'Music'},{id:'today',ru:'Сегодня',en:'Today'},{id:'calendar',ru:'Календарь',en:'Calendar'},{id:'focus',ru:'Фокус',en:'Focus'}];
+// Defaults only fill absent settings; explicit choices from previous versions win.
+export const defaultWidgetSelection:Record<string,'true'|'false'>={tasks:'true',note:'true',calendar:'true',focus:'true',projects:'false',music:'false',today:'false'};
 export function readWidgetLayout(raw:string):{order:string[];wide:string[]}{
   const ids=widgetCatalog.map(w=>w.id);
   try{const value=JSON.parse(raw);return {order:[...new Set([...(Array.isArray(value?.order)?value.order.filter((id:unknown)=>typeof id==='string'&&ids.includes(id)):[]),...ids])] as string[],wide:Array.isArray(value?.wide)?ids.filter(id=>value.wide.includes(id)):[]};}

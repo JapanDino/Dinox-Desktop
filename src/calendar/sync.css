@@ -29,3 +29,37 @@
 .cs-quick-composer footer{margin-top:16px;padding-top:12px;border-top:1px solid #242424;gap:8px}
 .cs-quick-composer footer button{font-size:12px;padding:8px 17px}.cs-quick-composer .cs-cancel{border:0;background:transparent;color:#aaa}
 @media(max-width:420px){.cs-quick-composer{padding:18px 14px 14px}.cs-quick-when.cs-with-range{display:grid;grid-template-columns:1fr 12px 1fr}.cs-with-range input[type=date]{grid-column:1/-1}.cs-quick-row{gap:9px}.cs-extra-details{padding-left:26px}}
+
+/* Stay inside the native island hit region, including at non-default UI scale. */
+.cs-backdrop.cs-contained{position:absolute;overflow:hidden;min-height:0;padding:12px}
+.cs-contained .cs-composer{max-height:100%;min-height:0}
+
+/* Creation and account management use the same desktop control vocabulary. */
+.cs-connect,.cs-composer,.cs-tasks{font-family:var(--dn-font,"Segoe UI Variable","Segoe UI",sans-serif)}
+.cs-connect{padding:18px;border-radius:12px}
+.cs-composer{border-radius:18px}
+.cs-connect h3,.cs-composer h3,.cs-tasks h3{font-size:18px;font-weight:600;line-height:1.35}
+.cs-connect p,.cs-connect small,.cs-footnote{line-height:1.6}
+.cs-providers{gap:12px;margin:16px 0}
+.cs-connect button,.cs-composer button,.cs-tasks button,.cs-new{border-radius:8px;line-height:1.4}
+.cs-account{padding:14px 0}
+.cs-tasks{padding:16px;border-radius:12px}
+.cs-task-list article{padding:10px 0}
+.cs-task-list small{font-size:12px;line-height:1.5}
+.cs-task-filters{gap:8px;margin:12px 0}
+.cs-task-filters label{font-size:12px;line-height:1.4}
+.cs-quick-composer{padding:20px 18px 16px}
+.cs-quick-composer input.cs-quick-title{font-size:20px;letter-spacing:-.2px;font-weight:600}
+.cs-quick-tabs{margin-bottom:4px}
+.cs-quick-tabs button{border-radius:8px;min-height:30px}
+.cs-quick-composer .cs-quick-row input:not([type=checkbox]),.cs-quick-composer .cs-quick-row select{border-radius:8px}
+html[data-bloom-unified] :is(.cs-connect,.cs-composer,.cs-tasks){border-color:var(--dn-border)}
+html[data-bloom-unified] .cs-tasks{background:transparent}
+html[data-bloom-unified] .cs-composer :is(.cs-quick-title,.cs-quick-row input:not([type=checkbox]),.cs-quick-row select){background:transparent;color:var(--dn-text);border-color:var(--dn-border)}
+html[data-bloom-unified] .cs-composer :is(.cs-quick-close,.cs-details-toggle,.cs-cancel){background:transparent;color:var(--dn-muted)}
+html[data-bloom-unified] :is(.cs-task-toggle[aria-expanded=true],.cs-quick-tabs button[aria-pressed=true],.cs-segments button[aria-pressed=true]){background:var(--dn-control);color:var(--dn-text)}
+html[data-bloom-unified] .cs-primary{background:var(--dn-text)!important;color:var(--dn-surface)!important}
+html[data-bloom-unified] .cs-composer footer,.cs-account,.cs-extra-details,.cs-task-list article{border-color:var(--dn-border)}
+html[data-bloom-unified] :is(.cs-code,.cs-segments){background:var(--dn-control);color:var(--dn-text)}
+html[data-bloom-unified] :is(.cs-task-list small,.cs-task-list p,.cs-quick-date-options,.cs-extra-details>small){color:var(--dn-muted)}
+@media(max-width:560px){.cs-connect,.cs-tasks{padding:14px}.cs-quick-composer{padding:18px 14px 14px}}

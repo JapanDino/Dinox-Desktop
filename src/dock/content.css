@@ -3,3 +3,42 @@
 .dock-pin-toolbar{border-top:1px solid #262626;padding:18px 22px 10px;display:flex;gap:14px;align-items:center;justify-content:space-between}.dock-pin-toolbar strong{font-size:13px;font-weight:500}.dock-pin-toolbar strong span{color:#999;margin-left:7px}.dock-pin-list{padding:0 22px;margin:0;list-style:none;max-height:330px;overflow-y:auto;overscroll-behavior:contain}.dock-pin-list li{display:flex;gap:12px;align-items:center;min-height:52px;border-bottom:1px solid #202020}.dock-pin-number{color:#666;font-size:11px;font-variant-numeric:tabular-nums}.dock-pin-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px}.dock-pin-actions{display:flex;gap:2px}.dock-pin-actions button{border-color:transparent;padding:8px;min-width:34px}.dock-app-picker{margin:16px 22px;border:1px solid #363636;border-radius:14px;overflow:hidden}.dock-app-picker label{display:flex;gap:10px;align-items:center;padding:12px;border-bottom:1px solid #303030;color:#999}.dock-app-picker input{background:none;border:0;color:#fff;min-width:0;width:100%;font:inherit;font-size:14px}.dock-app-results{max-height:240px;overflow:auto;padding:6px}.dock-app-results button{display:flex;width:100%;justify-content:space-between;border:0;text-align:left}.dock-app-results p{padding:12px;color:#999;font-size:13px}.dock-import{padding:16px 22px 0}.dock-import>div{padding:14px;background:#141414;border:1px solid #303030;border-radius:14px;margin-top:12px}.dock-import p{font-size:13px;line-height:1.7;margin:0 0 8px}.dock-import small{color:#999;line-height:1.6;display:block}.dock-import>div>div{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}.dock-save-status{min-height:18px;color:#999;font-size:12px;margin:8px 22px 16px}.dock-attention-dot{position:absolute;right:1px;top:0;width:7px;height:7px;background:#fff;border:2px solid #000;border-radius:50%;pointer-events:none}.notification-connection{padding:18px 22px;border-bottom:1px solid #252525}.notification-connection strong{font-size:14px}.notification-connection p{color:#aaa;font-size:13px;line-height:1.6;margin:8px 0}.notification-connection button{border:1px solid #444;border-radius:10px;background:#151515;color:#fff;padding:9px 13px;cursor:pointer}.notification-connection button:focus-visible{outline:2px solid #fff;outline-offset:3px}.notification-connection small{color:#888;font-size:12px;display:block;line-height:1.6;margin:8px 0}
 .dock-page-button{display:flex;flex-direction:column;align-items:center;justify-content:center;color:#ddd;background:none;border:0;border-radius:8px;min-width:28px;min-height:40px;cursor:pointer;padding:2px}.dock-page-button small{font-size:9px;color:#999}.dock-page-button:disabled{opacity:.3;cursor:default}.dock-page-button:focus-visible{outline:2px solid #fff;outline-offset:2px}.dock-page-button:hover:not(:disabled){background:#ffffff12}
 @media(max-width:480px){.dock-mode-choice{grid-template-columns:1fr}.dock-content-heading,.dock-mode-choice,.dock-pin-toolbar{padding-left:14px;padding-right:14px}.dock-pin-list{padding:0 12px}.dock-pin-list li{gap:7px}.dock-content-note{padding:0 14px 12px}.dock-pin-actions button{min-width:32px;padding:7px}.dock-running-option{padding-left:14px;padding-right:14px}}
+.dock-pin-app-icon{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;background:var(--bloom-group-bg,#161616);border-radius:8px;color:var(--bloom-text-secondary,#aaa)}.dock-pin-app-icon img{width:28px;height:28px;object-fit:contain}.dock-content-settings .dock-pin-grip{border:0;padding:4px;min-width:28px;min-height:36px;cursor:grab;color:var(--bloom-text-secondary,#aaa)}.dock-pin-grip:active{cursor:grabbing}.dock-pin-list li.is-dragging{opacity:.4}.dock-order-hint{font-size:11px;padding-bottom:6px}.dock-app-results button>span:nth-child(2){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.dock-app-results button[aria-pressed=true]{background:var(--bloom-group-bg,#242424)}
+
+/* Pinning is an app list, rather than a stack of nested cards. */
+.dock-content-settings { color: var(--dn-text); font-family: var(--dn-font); }
+.dock-content-heading { padding: 16px 12px 8px; gap: 12px; }
+.dock-content-heading>svg, .dock-content-heading p, .dock-content-note, .dock-mode-choice small, .dock-pin-toolbar strong span, .dock-save-status, .dock-import small, .dock-app-results p { color: var(--dn-muted); }
+.dock-content-heading strong { font-size: 16px; line-height: 1.4; }
+.dock-content-heading p, .dock-content-note { font-size: 12px; line-height: 1.6; }
+.dock-content-note { padding: 0 12px 12px; }
+.dock-content-settings button { border-radius: var(--dn-radius-control); border-color: color-mix(in srgb, var(--dn-text) 14%, transparent); font-size: 12px; min-height: 32px; }
+.dock-content-settings button:hover:not(:disabled) { background: var(--dn-hover); border-color: color-mix(in srgb, var(--dn-text) 24%, transparent); }
+.dock-content-settings button:focus-visible, .dock-app-picker input:focus-visible { outline-color: var(--dn-focus); }
+.dock-mode-choice { gap: 8px; padding: 12px; }
+.dock-mode-choice button { padding: 12px; background: var(--dn-input); }
+.dock-mode-choice button[aria-pressed=true] { background: var(--dn-control); border-color: color-mix(in srgb, var(--dn-text) 35%, transparent); }
+.dock-mode-choice strong { font-size: 13px; font-weight: 600; }
+.dock-mode-choice small { font-size: 12px; margin-top: 4px; }
+.dock-running-option { padding: 4px 12px 16px; gap: 12px; }
+.dock-running-option input { accent-color: var(--dn-text); }
+.dock-pin-toolbar { padding: 12px; border-color: color-mix(in srgb, var(--dn-text) 9%, transparent); gap: 8px; flex-wrap: wrap; }
+.dock-pin-list { padding-inline: 12px; }
+.dock-pin-list li { gap: 8px; min-height: 52px; border-color: color-mix(in srgb, var(--dn-text) 8%, transparent); }
+.dock-pin-number { color: var(--dn-muted); }
+.dock-pin-name { font-size: 13px; }
+.dock-pin-app-icon { background: transparent; }
+.dock-pin-actions button { border-color: transparent; min-width: 32px; padding: 7px; }
+.dock-app-picker { margin: 12px; border-radius: var(--dn-radius-card); border-color: color-mix(in srgb, var(--dn-text) 16%, transparent); background: var(--dn-input); }
+.dock-app-picker label { border-color: color-mix(in srgb, var(--dn-text) 10%, transparent); color: var(--dn-muted); }
+.dock-app-picker input { color: var(--dn-text); font-size: 13px; }
+.dock-app-picker input::placeholder { color: var(--dn-muted); opacity: 1; }
+.dock-app-results button { border-color: transparent; min-height: 40px; gap: 10px; }
+.dock-app-results button[aria-pressed=true] { background: var(--dn-control); }
+.dock-import { padding: 12px 12px 0; }
+.dock-import>div { padding: 12px; border: 0; border-radius: var(--dn-radius-card); background: var(--dn-raised); }
+.dock-import p { font-size: 12px; }
+.dock-save-status { margin: 8px 12px 12px; }
+.notification-connection { padding: 16px 12px; border-color: color-mix(in srgb, var(--dn-text) 9%, transparent); }
+.notification-connection p, .notification-connection small { color: var(--dn-muted); line-height: 1.6; }
+.notification-connection button { background: var(--dn-control); color: var(--dn-text); border-color: var(--dn-border); border-radius: var(--dn-radius-control); min-height: 32px; }

@@ -1,5 +1,6 @@
 import {tr} from '../i18n/core';
-import { BloomAppearanceSetting } from '../appearance/BloomAppearance';
+import { BloomAppearanceSetting, useBloomAppearance } from '../appearance/BloomAppearance';
+import {tx} from '../desktopText';
 import { Palette, Droplet, Contrast, Droplets, Sun, Square, Maximize2 } from "lucide-react";
 import { SettingRow } from "./SettingRow";
 interface AppearanceTabProps {
@@ -19,10 +20,12 @@ interface AppearanceTabProps {
     handleScaleChange: (val: number) => void;
 }
 export function AppearanceTab({ themeMode, handleThemeModeChange, themeColor, handleThemeColorChange, themeOpacity, handleOpacityChange, themeSaturation, handleSaturationChange, themeBrightness, handleBrightnessChange, cornersEnabled, toggleCorners, scale, handleScaleChange, }: AppearanceTabProps) {
+    const unified = useBloomAppearance();
     const showCustomColor = themeMode === "custom";
     const showAdvancedSliders = themeMode === "custom" || themeMode === "adaptive";
     return (<>
       <div className="setting-group"><BloomAppearanceSetting /></div>
+      {unified ? <div className="setting-group"><p className="appearance-unified-hint">{tx('Сейчас все панели используют стиль Bloom. Выключите «Единый стиль Dinox», чтобы изменить цвет и прозрачность. Сохранённые темы останутся на месте.','All panels currently use the Bloom style. Turn off “Unified Dinox style” to adjust colour and opacity. Your saved themes are preserved.')}</p></div> : <>
       <div className="setting-group-label">{tr("Theme")}</div>
       <div className="setting-group">
         <SettingRow icon={Palette} label={tr("Theme Mode")} desc={tr("Configure visual styling")}>
@@ -56,6 +59,7 @@ export function AppearanceTab({ themeMode, handleThemeModeChange, themeColor, ha
           </>)}
       </div>
 
+      </>}
       <div className="setting-group-label">{tr("Display")}</div>
       <div className="setting-group">
         <SettingRow icon={Square} label={tr("Screen Corners")} desc={tr("Rounded top edges")}>
@@ -67,11 +71,11 @@ export function AppearanceTab({ themeMode, handleThemeModeChange, themeColor, ha
 
         <SettingRow icon={Maximize2} label={tr("UI & Font Scale")} desc={tr("Adjust desktop size ({0}%)", Math.round(scale * 100))} divider={false}>
           <div className="scale-button-container">
-            <button onClick={() => handleScaleChange(Math.max(0.8, parseFloat((scale - 0.1).toFixed(1))))} disabled={scale <= 0.8} className="scale-adjust-btn" title={tr("Decrease Scale")}>
+            <button aria-label={tr('Decrease Scale')} onClick={() => handleScaleChange(Math.max(0.8, parseFloat((scale - 0.1).toFixed(1))))} disabled={scale <= 0.8} className="scale-adjust-btn" title={tr("Decrease Scale")}>
               —
             </button>
             <span className="scale-display-value">{Math.round(scale * 100)}%</span>
-            <button onClick={() => handleScaleChange(Math.min(1.3, parseFloat((scale + 0.1).toFixed(1))))} disabled={scale >= 1.3} className="scale-adjust-btn" title={tr("Increase Scale")}>
+            <button aria-label={tr('Increase Scale')} onClick={() => handleScaleChange(Math.min(1.3, parseFloat((scale + 0.1).toFixed(1))))} disabled={scale >= 1.3} className="scale-adjust-btn" title={tr("Increase Scale")}>
               +
             </button>
           </div>

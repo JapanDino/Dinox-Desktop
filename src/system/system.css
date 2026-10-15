@@ -3,6 +3,10 @@
 .system-strip button:hover,.system-strip button[aria-expanded=true]{background:color-mix(in srgb,var(--dock-text) 11%,transparent)}
 .system-strip button:focus-visible,.system-panel button:focus-visible{outline:2px solid var(--dock-accent);outline-offset:2px}
 .system-strip .system-language{width:36px;font-size:11px;font-weight:600;letter-spacing:.3px}.system-strip .system-quick{padding:0 8px;flex:1}.system-strip .system-tray{width:32px}.system-battery{display:flex;align-items:center;gap:4px}.system-battery small{font-size:10px;font-variant-numeric:tabular-nums}
+html[data-bloom-unified=true] .system-strip{font-family:var(--dn-font,"Segoe UI",sans-serif);color:color-mix(in srgb,var(--dock-text) 88%,transparent);}
+html[data-bloom-unified=true] .system-strip svg{stroke-width:1.65;}
+html[data-bloom-unified=true] .system-strip .system-language{font-size:10px;font-weight:500;letter-spacing:.15px;}
+html[data-bloom-unified=true] .system-strip button:hover,html[data-bloom-unified=true] .system-strip button[aria-expanded=true]{background:color-mix(in srgb,var(--dock-text) 6%,transparent);color:var(--dock-text);}
 .system-panel{position:fixed;z-index:2000;box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;padding:18px;border-radius:22px;border:1px solid color-mix(in srgb,var(--dock-text) 15%,transparent);background:var(--system-surface,#1c2028);color:var(--dock-text,#f4f5f7);box-shadow:0 18px 55px #0006;font:12px/1.45 'Segoe UI',sans-serif;scrollbar-width:thin;scrollbar-color:#8885 transparent;user-select:none}
 .system-panel *{box-sizing:border-box}.system-panel button{font:inherit;color:inherit;border:0;cursor:pointer;background:transparent}.system-panel button:disabled,.system-panel input:disabled{opacity:.4;cursor:default}.system-panel>header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.system-panel>header strong{display:block;font-size:15px;font-weight:600}.system-panel>header span{font-size:11px;opacity:.55}.system-panel>header button{display:grid;place-items:center;width:29px;height:29px;border-radius:9px}.system-panel>header button:hover{background:#8882}
 .system-connections{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.system-connections button{display:flex;align-items:center;gap:9px;text-align:left;border:1px solid color-mix(in srgb,var(--dock-text) 9%,transparent);background:color-mix(in srgb,var(--dock-accent) 10%,transparent);border-radius:13px;padding:12px 10px}.system-connections button>svg:first-child{width:20px;color:var(--dock-accent);flex-shrink:0}.system-connections button>svg:last-child{margin-left:auto;opacity:.5}.system-connections span{font-weight:600}.system-connections small,.system-info-row small{display:block;font-size:10px;opacity:.6;font-weight:400;margin-top:2px}
@@ -67,3 +71,50 @@
 .system-info-row>button{min-width:0}.system-info-row>button>span{min-width:0;overflow-wrap:anywhere}
 .system-panel>header{position:sticky;top:-16px;z-index:2;background:var(--system-surface,#000);padding:8px 0;margin-top:-8px;box-shadow:0 5px 8px var(--system-surface,#000)}
 .wifi-connect-form{scroll-margin-top:54px}
+
+/* System tools share one quiet panel with direct, consistently sized actions. */
+.system-panel { font-family: var(--dn-font, "Segoe UI Variable", "Segoe UI", sans-serif); border-radius: var(--dn-radius-dialog, 18px); border-color: color-mix(in srgb, var(--dock-text) 12%, transparent); box-shadow: 0 12px 32px #0004; }
+.system-panel>header strong { font-size: 16px; line-height: 1.4; }
+.system-panel>header button { width: 32px; height: 32px; flex-shrink: 0; border-radius: var(--dn-radius-control, 8px); }
+.system-panel>header { box-shadow: none; }
+.system-connections { gap: 8px; }
+.system-connections button { border: 1px solid transparent; border-radius: var(--dn-radius-card, 12px); background: color-mix(in srgb, var(--dock-text) 6%, transparent); min-width: 0; min-height: 60px; gap: 8px; }
+.system-connections button:hover { background: color-mix(in srgb, var(--dock-text) 10%, transparent); }
+.system-connections button>svg:first-child { color: var(--dock-text); }
+.system-connections button span { min-width: 0; font-size: 12px; overflow-wrap: anywhere; }
+.system-connections small, .system-info-row small { font-size: 11px; opacity: 1; color: color-mix(in srgb, var(--dock-text) 70%, transparent); }
+.system-slider label { font-size: 13px; font-weight: 500; }
+.system-slider output { font-size: 12px; opacity: 1; color: color-mix(in srgb, var(--dock-text) 70%, transparent); }
+.system-slider>div:first-child>button { min-width: 28px; min-height: 28px; border-radius: var(--dn-radius-control, 8px); }
+.system-links { font-size: 11px; }
+.system-links button { font-size: 11px; min-height: 28px; opacity: 1; color: color-mix(in srgb, var(--dock-text) 75%, transparent); }
+.system-links>span { opacity: 1; color: color-mix(in srgb, var(--dock-text) 65%, transparent); }
+.system-info-row button { border-radius: var(--dn-radius-control, 8px); min-height: 48px; background: transparent; }
+.system-shortcuts button { border-radius: var(--dn-radius-control, 8px); min-height: 34px; padding: 8px 5px; white-space: normal; }
+.system-panel footer button { font-size: 11px; min-height: 28px; white-space: normal; text-align: left; opacity: 1; }
+.bluetooth-power-label span, .bluetooth-device div>span { color: color-mix(in srgb, var(--dock-text) 70%, transparent); opacity: 1; font-size: 11px; }
+.bluetooth-list-heading { color: color-mix(in srgb, var(--dock-text) 70%, transparent); font-size: 12px; }
+.bluetooth-list-heading button { width: 32px; height: 32px; }
+.bluetooth-device-icon { background: transparent; border-radius: var(--dn-radius-control, 8px); }
+.bluetooth-device strong { font-size: 13px; }
+.bluetooth-empty { opacity: 1; color: color-mix(in srgb, var(--dock-text) 70%, transparent); }
+.bluetooth-hint { opacity: 1; color: color-mix(in srgb, var(--dock-text) 65%, transparent); font-size: 11px; }
+.system-panel .bluetooth-add { border-radius: var(--dn-radius-control, 8px); min-height: 36px; }
+.system-panel .bluetooth-footer button { font-size: 11px; }
+.wifi-network-info strong { font-size: 13px; font-weight: 600; }
+.wifi-network:hover:not(:disabled) { background: color-mix(in srgb, var(--dock-text) 7%, transparent); }
+.system-panel .wifi-network[data-connected=true] { background: color-mix(in srgb, var(--dock-text) 6%, transparent); }
+.wifi-connect-form { padding: 12px; border-color: transparent; background: color-mix(in srgb, var(--dock-text) 5%, transparent); border-radius: var(--dn-radius-card, 12px); }
+.wifi-connect-form input[type=password] { background: var(--system-surface); color: var(--dock-text); border-color: color-mix(in srgb, var(--dock-text) 30%, transparent); border-radius: var(--dn-radius-control, 8px); }
+.wifi-connect-form input[type=checkbox] { accent-color: var(--dock-accent); }
+@media(max-width:360px) { .system-connections, .system-shortcuts { grid-template-columns: 1fr; } .system-info-row { flex-wrap: wrap; } .system-info-row button { flex-basis: 100%; } }
+
+/* These selectors intentionally outrank the original Bloom compatibility skin. */
+html[data-bloom-unified] .system-panel { font-family: var(--dn-font); border-radius: var(--dn-radius-dialog, 18px); padding: 16px; background: var(--system-surface, var(--dn-surface)); color: var(--dock-text, var(--dn-text)); border-color: color-mix(in srgb, var(--dock-text, var(--dn-text)) 12%, transparent); box-shadow: 0 12px 32px #0004; }
+html[data-bloom-unified] .system-panel>header strong { font-size: 16px; letter-spacing: 0; }
+html[data-bloom-unified] .system-panel .lucide { stroke-width: 1.7; }
+html[data-bloom-unified] .system-connections button { border: 1px solid transparent; border-radius: var(--dn-radius-card, 12px); background: color-mix(in srgb, var(--dock-text) 6%, transparent); gap: 8px; }
+html[data-bloom-unified] .system-connections button>svg:first-child { color: var(--dock-text); width: 20px; }
+html[data-bloom-unified] .system-panel button:hover:not(:disabled) { background: color-mix(in srgb, var(--dock-text) 9%, transparent); color: var(--dock-text); }
+html[data-bloom-unified] .system-links button:hover, html[data-bloom-unified] .system-panel footer button:hover { background: transparent; color: var(--dock-text); }
+html[data-bloom-unified] :is(.system-connections small, .system-info-row small, .system-slider output, .system-links button, .system-links>span, .system-panel footer button) { color: color-mix(in srgb, var(--dock-text) 70%, transparent); }

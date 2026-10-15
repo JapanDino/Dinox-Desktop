@@ -4,3 +4,37 @@ html:has(>.launcher-host),body.launcher-host{margin:0;background:#080808}body.la
 .launcher-preferences{display:flex;gap:6px;flex-wrap:wrap}.dinox-launcher footer{flex-wrap:wrap}.launcher-preferences select{max-width:170px}
 
 .dinox-launcher{position:relative}.launcher-section-label{padding:15px 23px 8px;color:#b5b5b5;font-size:12px;font-weight:600;display:flex;gap:9px;align-items:center}.launcher-section-label code{min-width:22px;padding:1px 5px;border-radius:4px;background:#252525;text-align:center;font-size:13px}.launcher-result-icon b{font-size:20px;font-weight:500;font-family:'Segoe UI',sans-serif}.calculator-result .launcher-result-text strong{font-size:27px;font-weight:500}.launcher-preferences{display:block;position:static}.launcher-preferences summary{list-style:none;display:grid;place-items:center;cursor:pointer;width:28px;height:28px;border-radius:7px}.launcher-preferences summary::-webkit-details-marker{display:none}.launcher-preferences summary:hover,.launcher-preferences[open] summary{background:#252525;color:#eee}.launcher-preferences summary:focus-visible{outline:2px solid #ddd}.launcher-preferences-body{position:absolute;right:12px;bottom:82px;z-index:5;background:#191919;border:1px solid #3a3a3a;border-radius:12px;padding:15px;width:min(330px,calc(100% - 24px));box-shadow:0 12px 50px #000a;display:grid;gap:12px;max-height:calc(100% - 170px);overflow:auto}.launcher-preferences-body select{width:100%;max-width:none;padding:9px!important}.launcher-preferences-body button{padding:8px;display:flex;align-items:center;gap:7px}.launcher-preferences-body p{font-size:11px;line-height:1.6;margin:0}.launcher-input{padding-top:23px;padding-bottom:23px}.launcher-input input{font-size:22px}.launcher-results>[role=option]{min-height:65px}.launcher-result-icon{width:37px;height:37px;background:#202020}.launcher-result-text strong{font-size:15px}.launcher-result-text small{margin-top:3px}@media(max-width:440px){.launcher-input input{font-size:18px}.launcher-input{padding:18px 14px}.launcher-section-label{padding-left:18px}.launcher-result-text strong{font-size:14px}.launcher-result-text small{font-size:11px}.launcher-preferences-body{bottom:96px}}
+.launcher-shortcut-summary{display:grid;gap:5px;min-width:0}
+.launcher-shortcut-summary>span:first-child,.launcher-engine-label>span{font-size:11px;color:var(--dn-muted,#aaa)}
+.launcher-shortcut-summary kbd{font-family:var(--dn-font,"Segoe UI",sans-serif);font-size:15px;color:var(--dn-text,#eee);white-space:normal;overflow-wrap:anywhere}
+.launcher-shortcut-summary .shortcut-connection{font-size:11px;line-height:1.5;color:var(--dn-muted,#aaa)}
+.launcher-shortcut-summary .shortcut-connection[data-state=unavailable],.launcher-shortcut-summary .shortcut-connection[data-state=unverified]{color:var(--dn-error,#efb8a8)}
+.launcher-engine-label{display:grid;gap:6px;min-width:0}
+.launcher-preferences-body{background:var(--dn-raised,#191919);color:var(--dn-text,#eee);border-color:var(--dn-border,#333);border-radius:var(--dn-radius-card,12px)}
+.launcher-preferences-body button{min-height:34px;border-radius:var(--dn-radius-control,8px);background:var(--dn-control,#171717);border-color:var(--dn-border,#333)}
+.launcher-preferences-body button:hover:not(:disabled){background:var(--dn-hover,#242424)}
+.launcher-preferences-body button:disabled{opacity:.5;cursor:wait}
+.launcher-preferences-body button svg{flex-shrink:0}
+.launcher-preferences-body button:focus-visible,.launcher-preferences-body select:focus-visible{outline-color:var(--dn-focus,#b7a6ff)}
+.launcher-preferences summary{width:32px;height:32px;border-radius:var(--dn-radius-control,8px)}
+
+/* Search is an input and a list. App artwork needs no second tile around it. */
+.dinox-launcher{font-family:var(--dn-font,"Segoe UI Variable","Segoe UI",sans-serif);border-radius:18px}
+.launcher-input{padding:18px 20px;gap:12px}
+.launcher-input input{font:20px/1.4 var(--dn-font,"Segoe UI",sans-serif);letter-spacing:-.15px}
+.launcher-tabs{padding:8px 14px;gap:4px}
+.launcher-tabs button{font-size:12px;min-height:30px;padding:5px 10px}
+.launcher-results>[role=option]{min-height:58px;padding:8px 12px;border-radius:8px;gap:12px}
+.launcher-result-icon{background:transparent;border:0;width:34px;height:34px;border-radius:6px}
+.launcher-result-icon img{width:28px;height:28px}
+.launcher-result-text strong{font-size:14px;font-weight:600;line-height:1.4}
+.launcher-result-text small{font-size:12px;line-height:1.5}
+.launcher-section-label{padding:12px 22px 8px;font-size:12px;font-weight:500}
+.dinox-launcher footer{font-size:12px;line-height:1.5}
+.launcher-privacy{font-size:11px;line-height:1.5}
+html[data-bloom-unified] .dinox-launcher .launcher-result-icon{background:transparent;border:0}
+html[data-bloom-unified] .dinox-launcher :is(.launcher-input,footer){border-color:var(--dn-border)}
+html[data-bloom-unified] .dinox-launcher .launcher-input input{background:transparent;color:var(--dn-text)}
+html[data-bloom-unified] .dinox-launcher .launcher-results>.selected{background:var(--dn-control);outline:0;box-shadow:inset 2px 0 var(--dn-text)}
+html[data-bloom-unified] .dinox-launcher .launcher-results>[role=option]:hover{background:var(--dn-hover)}
+@media(max-width:440px){.launcher-input{padding:16px 14px}.launcher-input input{font-size:18px}.launcher-results>[role=option]{padding-inline:8px}.launcher-result-text small{font-size:11px}}

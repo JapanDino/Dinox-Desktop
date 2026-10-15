@@ -14,7 +14,6 @@ import { listen } from "@tauri-apps/api/event";
 import { X, Settings, Palette, PanelTop, Monitor, Layers, Info, Bell, Send } from "lucide-react";
 import { useSettings, GeneralTab, AppearanceTab, NotchTab, DockTab, OverlaysTab, AboutTab, } from "./settings/index";
 import type { SettingsTab } from "./settings/index";
-import { initTheme } from "./theme";
 import "./Settings.css";
 const appWindow = getCurrentWebviewWindow();
 const TABS: {
@@ -49,16 +48,24 @@ const TABS: {
 function SettingsApp() {
     useBloomAppearance();
     const [activeTab, setActiveTab] = useState<SettingsTab>("general");
+    const [searchFocusRequest, setSearchFocusRequest] = useState(0);
     const settings = useSettings();
     useEffect(() => {
         const dock = listen('open-dock-settings', () => setActiveTab('dock'));
         const notifications = listen('open-notification-settings', () => setActiveTab('notifications'));
         const unlisten = listen('open-calendar-settings', () => setActiveTab('notch'));
-        return () => { void dock.then(f=>f()); notifications.then(f => f()).catch(console.error); unlisten.then(f => f()).catch(console.error); };
+        const search = listen('open-search-settings', () => { setActiveTab('general'); setSearchFocusRequest(v => v + 1); });
+        return () => { void dock.then(f=>f()); notifications.then(f => f()).catch(console.error); unlisten.then(f => f()).catch(console.error); search.then(f => f()).catch(console.error); };
     }, []);
     useEffect(() => {
-        return initTheme();
-    }, []);
+        if (!searchFocusRequest || activeTab !== 'general') return;
+        const frame = requestAnimationFrame(() => {
+            const section = document.getElementById('dinox-search-settings');
+            section?.scrollIntoView({block: 'nearest'});
+            section?.focus({preventScroll: true});
+        });
+        return () => cancelAnimationFrame(frame);
+    }, [searchFocusRequest, activeTab]);
     useEffect(() => {
         const preventContext = (e: MouseEvent) => e.preventDefault();
         document.addEventListener("contextmenu", preventContext as any);
@@ -102,7 +109,18 @@ function SettingsApp() {
             </button>))}
         </div>
 
-        <div className="settings-content">
+        <div className="settings-content" aria-busy={settings.persistenceStatus.pending > 0}>
+          {settings.persistenceStatus.pending > 0 && <div className="settings-save-status" role="status">{tx('Сохранение…', 'Saving…')}</div>}
+          {settings.persistenceStatus.failures.map(failure => <div className="settings-inline-error" role="alert" key={failure.id}>
+            <p>{failure.id === 'autostart'
+              ? tx('Не удалось подтвердить изменение автозапуска. Проверьте состояние и повторите.', 'Could not confirm the autostart change. Check its state and retry.')
+              : tx('Не удалось применить настройку. Сохранённое значение не изменилось.', 'Could not apply the setting. The saved value is unchanged.')}</p>
+            <details><summary>{tx('Подробности', 'Details')}</summary>{failure.message}</details>
+            <div className="settings-save-error-actions">
+              <button type="button" className="settings-action-btn" disabled={settings.persistenceStatus.pending > 0} onClick={() => { void failure.retry(); }}>{tx('Повторить', 'Retry')}</button>
+              <button type="button" className="settings-action-btn" onClick={() => settings.dismissSaveError(failure.id)}>{tx('Закрыть', 'Dismiss')}</button>
+            </div>
+          </div>)}
           {activeTab === "telegram" && <TelegramSettings/>}
           {activeTab === "workspace" && <><LayoutEditor/><WidgetSettings/></>}
           {activeTab === "notifications" && <NotificationSettings />}
@@ -116,6 +134,7 @@ function SettingsApp() {
       </div>
     </div>);
 }
-createRoot(document.getElementById("root") as HTMLElement).render(<StrictMode>
+const settingsRoot=(window as any).__BLOOM_PREVIEW_ROOT__??((window as any).__DINOX_SETTINGS_ROOT__??=createRoot(document.getElementById("root") as HTMLElement));
+settingsRoot.render(<StrictMode>
     <SettingsApp />
   </StrictMode>);

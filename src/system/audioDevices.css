@@ -1,0 +1,30 @@
+.audio-devices-content{font:12px/1.5 var(--dn-font,'Segoe UI Variable','Segoe UI',sans-serif);color:var(--dock-text);min-width:0;--audio-muted:color-mix(in srgb,var(--dock-text) 72%,var(--system-surface))}
+.system-panel .audio-devices-heading{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.audio-devices-heading strong{flex:1;font-size:15px;font-weight:600}
+.system-panel .audio-devices-heading button{display:grid;place-items:center;width:30px;height:30px;flex-shrink:0;border-radius:8px;background:transparent;color:var(--dock-text);border:0}
+.system-panel .audio-devices-heading button:hover{background:color-mix(in srgb,var(--dock-text) 10%,transparent)}
+.audio-device-tabs{display:flex;gap:4px;padding:3px;border:1px solid color-mix(in srgb,var(--dock-text) 12%,transparent);border-radius:10px;margin-bottom:12px}
+.system-panel .audio-device-tabs button{display:flex;align-items:center;justify-content:center;gap:7px;flex:1;min-height:34px;border-radius:8px;color:var(--audio-muted);padding:6px 10px}
+.system-panel .audio-device-tabs button[aria-selected=true]{background:color-mix(in srgb,var(--dock-text) 10%,transparent);color:var(--dock-text)}
+.audio-device-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;max-height:220px;overflow:auto;scrollbar-width:thin}
+.system-panel .audio-device-choice{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;border-radius:10px;padding:8px 10px;text-align:left;border:1px solid transparent;background:transparent;color:var(--dock-text)}
+.system-panel .audio-device-choice:hover{background:color-mix(in srgb,var(--dock-text) 8%,transparent)}
+.system-panel .audio-device-choice[aria-pressed=true]{border-color:color-mix(in srgb,var(--dock-text) 15%,transparent);background:color-mix(in srgb,var(--dock-text) 7%,transparent)}
+.audio-device-choice>svg{flex-shrink:0}.audio-device-choice>span{flex:1;min-width:0}.audio-device-choice strong{display:block;font-size:12px;font-weight:500;overflow-wrap:anywhere}.audio-device-choice small{display:block;font-size:11px;color:var(--audio-muted)}
+.audio-calls-option{display:flex;align-items:center;gap:8px;margin:12px 0;color:var(--audio-muted);cursor:pointer}
+.audio-calls-option input{width:15px;height:15px;flex-shrink:0;accent-color:var(--dock-accent)}
+.audio-endpoint-controls{border-top:1px solid color-mix(in srgb,var(--dock-text) 12%,transparent);padding-top:12px;margin-top:12px}
+.audio-endpoint-controls>div{display:flex;align-items:center;gap:8px;margin-bottom:8px}.audio-endpoint-controls label{flex:1}.audio-endpoint-controls output{font-variant-numeric:tabular-nums;white-space:nowrap}
+.system-panel .audio-mute{display:grid;place-items:center;width:30px;height:30px;border-radius:8px;color:var(--dock-text)}
+.system-panel .audio-mute[aria-pressed=true]{background:color-mix(in srgb,var(--dock-text) 12%,transparent)}
+.audio-endpoint-controls>input{display:block;appearance:none;-webkit-appearance:none;box-sizing:border-box;width:100%;height:36px;margin:0;border-radius:9px;border:1px solid color-mix(in srgb,var(--dock-text) 24%,transparent);background:linear-gradient(to right,var(--dock-text) 0 var(--audio-level),color-mix(in srgb,var(--dock-text) 16%,var(--system-surface)) var(--audio-level) 100%);cursor:pointer}
+.audio-endpoint-controls>input::-webkit-slider-runnable-track{height:34px;background:transparent}
+.audio-endpoint-controls>input::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;height:18px;width:5px;margin-top:8px;border-radius:3px;border:1px solid var(--dock-text);background:var(--system-surface);box-shadow:0 0 0 2px var(--dock-text)}
+.audio-endpoint-controls>input::-moz-range-thumb{height:18px;width:5px;border-radius:3px;border:1px solid var(--dock-text);background:var(--system-surface);box-shadow:0 0 0 2px var(--dock-text)}
+.audio-device-status{display:block;margin-top:7px;font-size:11px;color:var(--audio-muted)}
+.audio-device-empty{padding:12px 0;font-size:12px;color:var(--audio-muted);overflow-wrap:anywhere}
+.audio-device-warning{font-size:11px;line-height:1.5;color:var(--audio-muted);margin:8px 0 12px}
+.audio-devices-content button:disabled,.audio-devices-content input:disabled{opacity:.5;cursor:default}
+.audio-devices-content button:focus-visible,.audio-devices-content input:focus-visible{outline:2px solid var(--dock-accent);outline-offset:2px}
+@media(max-width:350px){.system-panel .audio-devices-heading{gap:4px}.audio-devices-heading strong{font-size:14px}.audio-device-tabs button{padding:6px}.audio-calls-option{align-items:flex-start}}
+@media(forced-colors:active){.audio-endpoint-controls>input{forced-color-adjust:auto}}

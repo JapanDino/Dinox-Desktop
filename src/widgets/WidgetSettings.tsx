@@ -5,11 +5,11 @@ import {usePersonalSetting} from '../components/PersonalFeatures';
 import {SearchSettings} from '../settings/SearchSettings';
 import {SettingRow} from '../settings/SettingRow';
 import {tx} from '../desktopText';
-import {widgetCatalog,readWidgetLayout} from './personalModel';
+import {widgetCatalog,readWidgetLayout,defaultWidgetSelection} from './personalModel';
 import './widgets.css';
 
 function WidgetChoice({id, ru, en}: {id:string;ru:string;en:string}) {
-  const [value, save] = usePersonalSetting(`dinox-widget-${id}`, 'true');
+  const [value, save] = usePersonalSetting(`dinox-widget-${id}`, defaultWidgetSelection[id]??'false');
   const [error, setError] = useState(false), [busy,setBusy] = useState(false);
   return <div><label className="widget-choice"><input type="checkbox" checked={value !== 'false'} disabled={busy} onChange={async event => {
     setError(false);setBusy(true);try{await save(String(event.target.checked));}catch{setError(true);}finally{setBusy(false);}
@@ -25,7 +25,7 @@ export function WidgetSettings() {
   return <section className="widget-settings">
     <div className="setting-group-label">{tx('Виджеты поверх окон','Widgets above windows')}</div>
     <div className="setting-group"><SettingRow icon={PanelsTopLeft} label={tx('Панель виджетов','Widget board')}
-      desc={tx('Задачи, заметка, проекты, музыка и календарь поверх приложений. Хоткей открывает панель на экране под курсором; Esc скрывает её.','Tasks, notes, projects, music and calendar over your apps. Open on the screen under your pointer with a shortcut; Esc hides the board.')} divider={false}>
+      desc={tx('Показывать выбранные виджеты поверх окон.','Show your selected widgets above windows.')} divider={false}>
       <label className="toggle-switch"><input type="checkbox" aria-label={tx('Включить виджеты','Enable widgets')} checked={enabled==='true'} disabled={busy} onChange={async event=>{
         setError('');setBusy(true);try{await save(String(event.target.checked));}catch{setError(tx('Не удалось сохранить','Could not save'));}finally{setBusy(false);}
       }}/><span className="slider"/></label>

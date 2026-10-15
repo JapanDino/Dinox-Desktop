@@ -3,12 +3,13 @@ use windows::Win32::Foundation::{HWND, LPARAM};
 use windows::Win32::UI::WindowsAndMessaging::EnumWindows;
 use std::sync::atomic::Ordering;
 
-use crate::types::{IntRect, AppInfo, BrightnessChangeEvent};
+use crate::types::{IntRect, AppInfo};
 use crate::state::*;
 use crate::utils::*;
 use crate::services::{register_appbar, sync_overlays, unregister_appbar_native, enum_windows_proc};
 use std::collections::HashMap;
 pub(crate) static SETTINGS_WRITE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+pub(crate) static NOTCH_SURFACE_VISIBLE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
 #[tauri::command]
 pub async fn set_menu_open(app: AppHandle, open: bool, rect: Option<IntRect>) {
@@ -46,7 +47,8 @@ pub async fn update_dock_rect(rect: IntRect) {
 }
 
 #[tauri::command]
-pub async fn update_notch_rect(rect: IntRect) {
+pub async fn update_notch_rect(rect: IntRect, visible:Option<bool>) {
+    NOTCH_SURFACE_VISIBLE.store(visible.unwrap_or(true),Ordering::Relaxed);
     if let Ok(mut r) = NOTCH_RECT.lock() {
         *r = Some(rect);
     }
@@ -131,7 +133,8 @@ pub async fn change_notch_mode(app: AppHandle, mode: String) {
             let m_size = monitor.size();
             let scale = monitor.scale_factor();
             let bloom_scale = crate::utils::get_bloom_scale(&app);
-            let target_height = ((760.0 * bloom_scale * scale) as u32).min(m_size.height);
+            let _ = (bloom_scale, scale);
+            let target_height = m_size.height;
             let _ = main_win.set_position(tauri::PhysicalPosition::new(m_pos.x, m_pos.y));
             let _ = main_win.set_size(tauri::PhysicalSize::new(m_size.width, target_height));
         }
@@ -453,55 +456,41 @@ pub async fn get_active_windows() -> Vec<AppInfo> {
     }).await.unwrap_or_default()
 }
 
+// Icon clicks may toggle the exact active window; thumbnail selection always
+// activates its HWND. Sharing a process or a recent focus timestamp is not identity.
+fn should_minimize_dock_window(toggle:bool,foreground:isize,target:isize)->bool {
+    toggle && foreground != 0 && foreground == target
+}
+
 #[tauri::command]
-pub async fn focus_window(hwnd: isize) {
+pub async fn focus_window(hwnd:isize,toggle:Option<bool>)->Result<(),String> {
     tauri::async_runtime::spawn_blocking(move || unsafe {
-        use windows::Win32::UI::WindowsAndMessaging::{SetForegroundWindow, ShowWindow, SW_RESTORE, SW_SHOW, SW_MINIMIZE, IsIconic, IsWindowVisible, GetForegroundWindow, GetWindowThreadProcessId};
-        let hwnd = HWND(hwnd as *mut _);
-        let my_pid = std::process::id();
-
-        if !IsWindowVisible(hwnd).as_bool() {
-            let _ = ShowWindow(hwnd, SW_SHOW);
-            let _ = ShowWindow(hwnd, SW_RESTORE);
-            let _ = SetForegroundWindow(hwnd);
-        } else if IsIconic(hwnd).as_bool() {
-            let _ = ShowWindow(hwnd, SW_RESTORE);
-            let _ = SetForegroundWindow(hwnd);
-        } else {
-            // Minimize if: window is foreground, OR same process as foreground (not Bloom), OR recently focused
-            let fg = GetForegroundWindow();
-            let mut should_minimize = false;
-
-            if !fg.is_invalid() && fg == hwnd {
-                should_minimize = true;
-            } else if !fg.is_invalid() {
-                let mut fg_pid = 0u32;
-                let mut target_pid = 0u32;
-                GetWindowThreadProcessId(fg, Some(&mut fg_pid));
-                GetWindowThreadProcessId(hwnd, Some(&mut target_pid));
-                if fg_pid == target_pid && fg_pid != 0 && fg_pid != my_pid {
-                    should_minimize = true;
-                }
-            }
-
-            if !should_minimize {
-                let now = crate::utils::get_now_ms();
-                should_minimize = if let Some(map) = crate::state::FOCUS_TIMESTAMPS.get() {
-                    if let Ok(guard) = map.lock() {
-                        guard.get(&(hwnd.0 as *mut () as isize))
-                            .map(|ts| now - ts < 2000)
-                            .unwrap_or(false)
-                    } else { false }
-                } else { false };
-            }
-
-            if should_minimize {
-                let _ = ShowWindow(hwnd, SW_MINIMIZE);
-            } else {
-                let _ = SetForegroundWindow(hwnd);
-            }
+        use windows::Win32::UI::WindowsAndMessaging::{SetForegroundWindow,ShowWindow,SW_RESTORE,SW_SHOW,SW_MINIMIZE,IsIconic,IsWindowVisible,IsWindow,GetForegroundWindow};
+        let target=HWND(hwnd as *mut _);
+        if !IsWindow(Some(target)).as_bool(){return Err("Окно уже закрыто".into());}
+        let foreground=GetForegroundWindow();
+        if IsWindowVisible(target).as_bool() && !IsIconic(target).as_bool()
+            && should_minimize_dock_window(toggle.unwrap_or(false),foreground.0 as isize,hwnd) {
+            let _=ShowWindow(target,SW_MINIMIZE);
+            return Ok(());
         }
-    }).await.unwrap_or_default();
+        if !IsWindowVisible(target).as_bool(){let _=ShowWindow(target,SW_SHOW);}
+        if IsIconic(target).as_bool(){let _=ShowWindow(target,SW_RESTORE);}
+        if GetForegroundWindow()==target || SetForegroundWindow(target).as_bool(){Ok(())}
+        else {Err("Windows не разрешила активировать окно. Повторите нажатие".into())}
+    }).await.map_err(|_|"Не удалось активировать окно".to_string())?
+}
+
+#[cfg(test)]
+mod dock_focus_tests {
+    use super::should_minimize_dock_window;
+    #[test]
+    fn previews_never_toggle_and_icons_toggle_only_exact_hwnd(){
+        assert!(!should_minimize_dock_window(false,42,42));
+        assert!(should_minimize_dock_window(true,42,42));
+        assert!(!should_minimize_dock_window(true,43,42));
+        assert!(!should_minimize_dock_window(true,0,42));
+    }
 }
 
 fn get_cache_key(path: &str, name: Option<&str>) -> String {
@@ -679,10 +668,11 @@ fn pwa_icon_from_command_line(process_path: &str, command_line: &str) -> Option<
 }
 
 /// Browser web app ids are 32 characters from the range a-p.
-fn browser_web_app_id_from_aumid(id: &str) -> Option<String> {
+pub(crate) fn browser_web_app_id_from_aumid(id: &str) -> Option<String> {
     let is_web_app_id = |s: &str| s.len() == 32 && s.bytes().all(|b| (b'a'..=b'p').contains(&b));
-    if let Some(segment) = id.rsplit('.').next() {
-        if is_web_app_id(segment) { return Some(segment.to_string()); }
+    let browser_prefix=id.split('.').next().unwrap_or_default().to_ascii_lowercase();
+    if matches!(browser_prefix.as_str(),"chrome"|"msedge"|"chromium"|"brave"|"opera") {
+        if let Some(segment)=id.split('.').skip(1).find(|segment|is_web_app_id(segment)) {return Some(segment.to_string());}
     }
     if let Some(idx) = id.find("_crx_") {
         if let Some(segment) = id[idx + 5..].split('.').next() {
@@ -690,6 +680,17 @@ fn browser_web_app_id_from_aumid(id: &str) -> Option<String> {
         }
     }
     None
+}
+
+#[cfg(test)]mod pwa_identity_tests{
+    use super::browser_web_app_id_from_aumid;
+    #[test]fn recognizes_profiled_web_apps_but_not_generic_browsers(){
+        let app="abcdefghijklmnopabcdefghijklmnop";
+        assert_eq!(browser_web_app_id_from_aumid(&format!("Chrome.{app}.Profile3")),Some(app.into()));
+        assert_eq!(browser_web_app_id_from_aumid(&format!("MSEdge._crx_{app}.Default")),Some(app.into()));
+        assert_eq!(browser_web_app_id_from_aumid("Chrome.Default"),None);
+        assert_eq!(browser_web_app_id_from_aumid(&format!("Unrelated.{app}.Profile3")),None);
+    }
 }
 
 unsafe fn pwa_icon_for_window(hwnd: HWND, process_path: &str) -> Option<String> {
@@ -1031,17 +1032,19 @@ pub fn save_pinned_apps(app: AppHandle, apps: Vec<AppInfo>) -> Result<(), String
 }
 
 #[tauri::command]
-pub async fn load_pinned_apps(app: AppHandle) -> Vec<AppInfo> {
-    let path = app.path().app_config_dir().unwrap_or_default().join("pinned_apps.json");
-    if let Ok(content) = std::fs::read_to_string(path) {
-        if let Ok(apps) = serde_json::from_str(&content) { return apps; }
+pub async fn load_pinned_apps(app: AppHandle) -> Result<Vec<AppInfo>, String> {
+    let path = app.path().app_config_dir().map_err(|e| e.to_string())?.join("pinned_apps.json");
+    match std::fs::read_to_string(path) {
+        Ok(content) => return serde_json::from_str(&content).map_err(|_| "Cannot read saved pins. The original file is preserved.".into()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {},
+        Err(error) => return Err(format!("Cannot open saved pins: {error}")),
     }
-    vec![
+    Ok(vec![
         AppInfo { name: "File Explorer".into(), path: "C:\\Windows\\explorer.exe".into(), icon: None, is_running: false, hwnd: None, executable: Some("explorer.exe".into()), all_hwnds: None },
         AppInfo { name: "Microsoft Edge".into(), path: "msedge".into(), icon: None, is_running: false, hwnd: None, executable: Some("msedge.exe".into()), all_hwnds: None },
         AppInfo { name: "Notepad".into(), path: "notepad.exe".into(), icon: None, is_running: false, hwnd: None, executable: Some("notepad.exe".into()), all_hwnds: None },
         AppInfo { name: "Settings".into(), path: "bloom-settings".into(), icon: None, is_running: false, hwnd: None, executable: None, all_hwnds: None },
-    ]
+    ])
 }
 
 #[tauri::command]
@@ -1222,6 +1225,14 @@ pub async fn open_dock_settings(app:AppHandle) -> Result<(),String> {
 }
 
 #[tauri::command]
+pub async fn open_search_settings(app:AppHandle) -> Result<(),String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        show_settings(&app)?;
+        app.emit_to("settings","open-search-settings",()).map_err(|_|"Не удалось открыть настройки поиска".into())
+    }).await.map_err(|_|"Не удалось открыть настройки поиска".to_string())?
+}
+
+#[tauri::command]
 pub fn hide_overlay(app: AppHandle) {
     if let Some(win) = app.get_webview_window("overlay") { let _ = win.hide(); }
 }
@@ -1399,7 +1410,9 @@ pub fn open_media_source_app() {
 }
 
 #[tauri::command]
-pub fn set_volume(volume: f32) { if let Some(sender) = COMMAND_SENDER.get() { let _ = sender.send(crate::types::SystemCommand::SetVolume(volume)); } }
+pub async fn set_volume(volume:f32)->Result<f32,String>{
+    tauri::async_runtime::spawn_blocking(move||crate::audio_mixer::set_default_volume(volume)).await.map_err(|_|"Audio worker unavailable".to_string())?
+}
 
 /// Restore the native taskbar, unregister Bloom's appbars, and exit gracefully.
 /// Shared by the tray menu, the in-app Quit button, and the window CloseRequested
@@ -1466,33 +1479,27 @@ fn re_register_appbars(app: &AppHandle, settings: &HashMap<String, serde_json::V
 
 #[tauri::command]
 pub fn save_setting(app: AppHandle, key: String, value: serde_json::Value) -> Result<(), String> {
-    if key=="dinox-search-shortcut"||key=="dinox-widgets-shortcut"{crate::launcher::parse_shortcut(value.as_str().ok_or("Invalid search shortcut")?)?;}
+    save_settings(app,HashMap::from([(key,value)]))
+}
+
+#[tauri::command]
+pub fn save_settings(app:AppHandle,values:HashMap<String,serde_json::Value>)->Result<(),String>{
+    for (key,value) in &values {
+        if key=="dinox-search-shortcut"||key=="dinox-widgets-shortcut"{crate::launcher::parse_shortcut(value.as_str().ok_or("Invalid search shortcut")?)?;}
+    }
     let guard=SETTINGS_WRITE_LOCK.lock().map_err(|_|"Settings lock unavailable".to_string())?;
     let path = app.path().app_config_dir().map_err(|e| e.to_string())?.join("settings.json");
-    if let Some(parent) = path.parent() { let _ = std::fs::create_dir_all(parent); }
-    let mut settings = HashMap::new();
-    if let Ok(content) = std::fs::read_to_string(&path) { if let Ok(existing) = serde_json::from_str::<HashMap<String, serde_json::Value>>(&content) { settings = existing; } }
-    settings.insert(key.clone(), value);
-    let content = serde_json::to_string(&settings).map_err(|e| e.to_string())?;
-    use std::{io::Write, os::windows::ffi::OsStrExt};
-    use windows::Win32::Storage::FileSystem::{MoveFileExW,MOVEFILE_REPLACE_EXISTING,MOVEFILE_WRITE_THROUGH};
-    let temp=path.with_extension("json.tmp");
-    let mut file=std::fs::File::create(&temp).map_err(|e|e.to_string())?;
-    file.write_all(content.as_bytes()).map_err(|e|e.to_string())?;
-    file.sync_all().map_err(|e|e.to_string())?;drop(file);
-    let from:Vec<u16>=temp.as_os_str().encode_wide().chain(Some(0)).collect();
-    let to:Vec<u16>=path.as_os_str().encode_wide().chain(Some(0)).collect();
-    unsafe {MoveFileExW(windows::core::PCWSTR(from.as_ptr()),windows::core::PCWSTR(to.as_ptr()),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH).map_err(|e|e.to_string())?;}
+    let mut settings=crate::settings_store::read(&path)?;
+    settings.extend(values.clone());
+    crate::settings_store::commit(&path,&settings)?;
 
     crate::utils::replace_settings_cache(settings.clone());
+    for (key,value) in &values {let _=app.emit("settings-changed",serde_json::json!({"key":key,"value":value}));}
     drop(guard);
-
-    // Broadcast so all windows sync — emit the key as-is (bloom-prefixed)
-    let _ = app.emit("settings-changed", serde_json::json!({ "key": &key, "value": &settings[&key] }));
-
+    for key in values.keys(){
     if key == "bloom-language" {crate::localization::apply(&app);}
     if matches!(key.as_str(), "dinox-search-shortcut"|"dinox-widgets-shortcut"|"dinox-widgets-enabled") {crate::launcher::refresh_hotkey();}
-    if key=="dinox-widgets-enabled" && settings[&key].as_str()!=Some("true") {let _=crate::widgets::hide(&app);}
+    if key=="dinox-widgets-enabled" && settings[key].as_str()!=Some("true") {let _=crate::widgets::hide(&app);}
     if key == "bloom-shell-mode" {
         // Explicit selection acknowledges a recovery. Background events cannot.
         crate::shell_controller::reset_recovery();
@@ -1503,18 +1510,15 @@ pub fn save_setting(app: AppHandle, key: String, value: serde_json::Value) -> Re
     if key == "bloom-scale" {
         re_register_appbars(&app, &settings);
     }
+    }
     Ok(())
 }
 
 
 #[tauri::command]
 pub fn load_settings(app: AppHandle) -> Result<HashMap<String, serde_json::Value>, String> {
-    let path = match app.path().app_config_dir() {
-        Ok(p) => p.join("settings.json"),
-        Err(_) => return Ok(HashMap::new()),
-    };
-    if let Ok(content) = std::fs::read_to_string(path) { if let Ok(settings) = serde_json::from_str(&content) { return Ok(settings); } }
-    Ok(HashMap::new())
+    let path=app.path().app_config_dir().map_err(|_|"Папка настроек недоступна")?.join("settings.json");
+    crate::settings_store::read(&path)
 }
 
 #[tauri::command]
@@ -1675,14 +1679,10 @@ pub fn open_airplane_mode_settings() {
 }
 
 #[tauri::command]
-pub fn set_brightness(app: AppHandle, brightness: u32) {
-    let val = brightness.min(100);
-    crate::state::CURRENT_BRIGHTNESS.store(val, Ordering::Relaxed);
-    crate::state::LAST_BRIGHTNESS_CHANGE.store(crate::utils::get_now_ms(), Ordering::Relaxed);
-    let _ = app.emit("brightness-change", BrightnessChangeEvent { brightness: val });
-    if let Some(tx) = crate::state::BRIGHTNESS_SENDER.get() {
-        let _ = tx.send(val);
-    }
+pub async fn set_brightness(app: AppHandle, brightness: u32)->Result<u32,String> {
+    let value=tauri::async_runtime::spawn_blocking(move||crate::brightness::set_and_read(brightness)).await.map_err(|_|"Не удалось изменить яркость".to_string())??;
+    crate::brightness::publish(&app,value);
+    Ok(value)
 }
 
 #[tauri::command]
@@ -1934,27 +1934,9 @@ pub fn write_settings_to_path(path: String, content: String) -> Result<(), Strin
 pub fn import_settings(app: AppHandle, settings: String) -> Result<(), String> {
     let imported: HashMap<String, serde_json::Value> =
         serde_json::from_str(&settings).map_err(|e| format!("Invalid JSON: {}", e))?;
-
-    let path = app.path().app_config_dir().map_err(|e| e.to_string())?.join("settings.json");
-    if let Some(parent) = path.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-
-    let content = serde_json::to_string_pretty(&imported).map_err(|e| e.to_string())?;
-    std::fs::write(&path, content).map_err(|e| e.to_string())?;
-
-    crate::utils::replace_settings_cache(imported.clone());
-
-    // Broadcast changes for every imported key so all windows re-sync
-    for (key, value) in &imported {
-        let _ = app.emit("settings-changed", serde_json::json!({ "key": key, "value": value }));
-    }
-
-    if imported.get("bloom-scale").is_some() {
-        re_register_appbars(&app, &imported);
-    }
-
-    Ok(())
+    // Use the same validation, atomic replacement and runtime refresh as the
+    // settings editor. Partial imports retain unrelated existing preferences.
+    save_settings(app, imported)
 }
 
 pub fn setup_settings_watcher(app: AppHandle) {

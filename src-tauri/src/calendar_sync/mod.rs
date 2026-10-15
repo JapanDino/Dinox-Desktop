@@ -15,7 +15,7 @@ pub fn calendar_cancel_auth(){CANCEL.store(true,std::sync::atomic::Ordering::Rel
 pub struct Item {pub id:String,pub title:String,pub start:Option<String>,pub end:Option<String>,pub all_day:bool,pub task:bool,pub completed:bool,pub description:String,pub url:String}
 fn enabled_default()->bool{true}
 #[derive(Clone,Serialize,Deserialize)]
-pub struct Collection {pub id:String,pub name:String,pub kind:String,pub writable:bool,#[serde(default="enabled_default")]pub enabled:bool,#[serde(default)]pub ics:String,#[serde(default)]pub items:Vec<Item>,#[serde(default)]pub checked:u64}
+pub struct Collection {#[serde(default)]pub color:String,pub id:String,pub name:String,pub kind:String,pub writable:bool,#[serde(default="enabled_default")]pub enabled:bool,#[serde(default)]pub ics:String,#[serde(default)]pub items:Vec<Item>,#[serde(default)]pub checked:u64}
 #[derive(Clone,Serialize,Deserialize)]
 struct Account {id:String,provider:String,label:String,username:String,secret:String,client_id:String,client_secret:String,refresh:String,access:String,expires:u64,collections:Vec<Collection>}
 #[derive(Clone,Serialize,Deserialize,PartialEq)]

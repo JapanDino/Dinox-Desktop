@@ -1,0 +1,4 @@
+.provider-logo{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:inherit;line-height:0;overflow:visible}
+.provider-logo>svg{display:block;width:100%;height:100%;fill:currentColor}
+.provider-logo-codex>svg{width:150%;height:150%;max-width:none;flex-shrink:0}
+.provider-logo-codex path{fill:currentColor}

@@ -123,18 +123,68 @@ struct Apartment;
 impl Apartment {fn new()->Result<Self,String>{unsafe{RoInitialize(RO_INIT_MULTITHREADED)}.map_err(|_|"Управление Wi-Fi недоступно".to_string())?;Ok(Self)}}
 impl Drop for Apartment{fn drop(&mut self){unsafe{RoUninitialize();}}}
 fn wifi_radios()->Result<Vec<Radio>,String>{Ok(Radio::GetRadiosAsync().and_then(|op|op.get()).map_err(|_|"Управление Wi-Fi недоступно".to_string())?.into_iter().filter(|r|r.Kind().ok()==Some(RadioKind::WiFi)).collect())}
-fn radio_state()->Result<(bool,bool),String>{let _a=Apartment::new()?;let radios=wifi_radios()?;if radios.is_empty(){return Err("Адаптер Wi-Fi не найден".into())}let states:Vec<_>=radios.iter().filter_map(|r|r.State().ok()).collect();Ok((states.contains(&RadioState::On),states.iter().any(|s|*s==RadioState::On||*s==RadioState::Off)))}
+fn read_radio_state()->Result<(bool,bool),String>{let radios=wifi_radios()?;if radios.is_empty(){return Err("Адаптер Wi-Fi не найден".into())}let states:Vec<_>=radios.iter().filter_map(|r|r.State().ok()).collect();Ok((states.contains(&RadioState::On),states.iter().any(|s|*s==RadioState::On||*s==RadioState::Off)))}
+fn apply_radio_state(enabled:bool)->Result<(),String>{let radios=wifi_radios()?;if radios.is_empty(){return Err("Адаптер Wi-Fi не найден".into())}let target=if enabled{RadioState::On}else{RadioState::Off};for r in radios{if r.State().ok()==Some(target){continue}if r.SetStateAsync(target).and_then(|op|op.get()).ok()!=Some(RadioAccessStatus::Allowed){return Err("Windows не разрешила переключение Wi-Fi".into())}}Ok(())}
+
+enum RadioRequest {
+    Read(std::sync::mpsc::Sender<Result<(bool,bool),String>>),
+    Set(bool,std::time::Instant,std::sync::mpsc::Sender<Result<(),String>>),
+}
+const RADIO_BUSY:&str="Windows ещё обновляет Wi-Fi. Попробуйте немного позже.";
+fn radio_worker()->Result<&'static std::sync::mpsc::SyncSender<RadioRequest>,String>{
+    static WORKER:std::sync::OnceLock<Result<std::sync::mpsc::SyncSender<RadioRequest>,String>>=std::sync::OnceLock::new();
+    WORKER.get_or_init(||{
+        let(send,receive)=std::sync::mpsc::sync_channel::<RadioRequest>(4);
+        std::thread::Builder::new().name("dinox-wifi-radio".into()).spawn(move||{
+            // Keep WinRT and its radio provider alive between requests. Repeated
+            // apartment teardown can unload WlanRadioManager while native WLAN
+            // still uses its callbacks (observed AV in WlanRadioManager.dll).
+            // Radio objects stay on this thread; the apartment is balanced when
+            // the worker exits. The process-wide sender owns its normal lifetime.
+            let apartment=Apartment::new();
+            while let Ok(request)=receive.recv(){
+                match request {
+                    RadioRequest::Read(reply)=>{if reply.send(apartment.as_ref().map_err(Clone::clone).and_then(|_|read_radio_state())).is_err(){continue;}},
+                    RadioRequest::Set(enabled,deadline,reply)=>{
+                        // A timed-out request must not switch the radio later
+                        // after sitting behind a slow Windows query.
+                        let result=if std::time::Instant::now()>=deadline{Err(RADIO_BUSY.to_string())}else{apartment.as_ref().map_err(Clone::clone).and_then(|_|apply_radio_state(enabled))};
+                        let _=reply.send(result);
+                    },
+                }
+            }
+        }).map_err(|_|"Не удалось запустить управление Wi-Fi".to_string())?;
+        Ok(send)
+    }).as_ref().map_err(Clone::clone)
+}
+fn radio_state()->Result<(bool,bool),String>{
+    let(send,receive)=std::sync::mpsc::channel();
+    radio_worker()?.try_send(RadioRequest::Read(send)).map_err(|_|RADIO_BUSY.to_string())?;
+    receive.recv_timeout(Duration::from_secs(5)).map_err(|_|RADIO_BUSY.to_string())?
+}
+fn set_radio_state(enabled:bool)->Result<(),String>{
+    let(send,receive)=std::sync::mpsc::channel();
+    let deadline=std::time::Instant::now()+Duration::from_secs(5);
+    radio_worker()?.try_send(RadioRequest::Set(enabled,deadline,send)).map_err(|_|RADIO_BUSY.to_string())?;
+    receive.recv_timeout(Duration::from_secs(5)).map_err(|_|RADIO_BUSY.to_string())?
+}
 #[tauri::command]
 pub async fn wifi_set_enabled(app:tauri::AppHandle,enabled:bool)->Result<(),String>{
     static ACCESS:AtomicBool=AtomicBool::new(false);
     if !ACCESS.load(Ordering::Relaxed){let(send,receive)=tokio::sync::oneshot::channel();app.run_on_main_thread(move||{let op=Radio::RequestAccessAsync();std::thread::spawn(move||{let _=send.send(op.and_then(|o|o.get()).map(|s|s==RadioAccessStatus::Allowed).unwrap_or(false));});}).map_err(|_|"Управление Wi-Fi недоступно")?;if !receive.await.unwrap_or(false){return Err("Windows не разрешила переключение Wi-Fi".into())}ACCESS.store(true,Ordering::Relaxed);}
-    tauri::async_runtime::spawn_blocking(move||{let _a=Apartment::new()?;let radios=wifi_radios()?;if radios.is_empty(){return Err("Адаптер Wi-Fi не найден".into())}let target=if enabled{RadioState::On}else{RadioState::Off};for r in radios{if r.State().ok()==Some(target){continue}if r.SetStateAsync(target).and_then(|op|op.get()).ok()!=Some(RadioAccessStatus::Allowed){ACCESS.store(false,Ordering::Relaxed);return Err("Windows не разрешила переключение Wi-Fi".into())}}Ok(())}).await.map_err(|_|"Управление Wi-Fi недоступно".to_string())?
+    tauri::async_runtime::spawn_blocking(move||{let result=set_radio_state(enabled);if result.is_err(){ACCESS.store(false,Ordering::Relaxed);}result}).await.map_err(|_|"Управление Wi-Fi недоступно".to_string())?
 }
 
 #[cfg(test)]
 mod tests {use super::*;
     #[test]fn ssid_identity_preserves_bytes_and_security(){let mut a=WLAN_AVAILABLE_NETWORK::default();a.dot11Ssid.uSSIDLength=2;a.dot11Ssid.ucSSID[..2].copy_from_slice(&[0xff,0x00]);let mut b=a;b.dot11Ssid.ucSSID[0]=0xfe;assert_ne!(key(&GUID::zeroed(),&a),key(&GUID::zeroed(),&b));b=a;b.dot11DefaultAuthAlgorithm.0+=1;assert_ne!(key(&GUID::zeroed(),&a),key(&GUID::zeroed(),&b));}
     #[test]fn access_denial_has_an_actionable_message(){assert!(check(5).unwrap_err().contains("местоположение"));assert!(check(0).is_ok());}
+    #[test]fn expired_queued_radio_change_does_not_touch_hardware(){
+        let(send,receive)=std::sync::mpsc::channel();
+        let deadline=std::time::Instant::now()-Duration::from_secs(1);
+        radio_worker().unwrap().try_send(RadioRequest::Set(false,deadline,send)).unwrap();
+        assert_eq!(receive.recv_timeout(Duration::from_secs(5)).unwrap().unwrap_err(),RADIO_BUSY);
+    }
     #[test]fn personal_profile_escapes_password_and_encodes_ssid(){
         let mut n=WLAN_AVAILABLE_NETWORK::default();n.dot11BssType=dot11_BSS_type_infrastructure;n.dot11DefaultAuthAlgorithm=DOT11_AUTH_ALGO_RSNA_PSK;n.dot11DefaultCipherAlgorithm=DOT11_CIPHER_ALGO_CCMP;n.bSecurityEnabled=windows::core::BOOL(1);n.dot11Ssid.uSSIDLength=3;n.dot11Ssid.ucSSID[..3].copy_from_slice(b"A<&");
         let(_,xml)=profile_xml(&n,Some("test<&\"'123")).unwrap();assert!(xml.contains("<hex>413C26</hex>"));assert!(xml.contains("test&lt;&amp;&quot;&apos;123"));assert!(!xml.contains("test<&"));assert!(profile_xml(&n,Some("short")).is_err());assert!(profile_xml(&n,Some("long\ninvalid")).is_err());

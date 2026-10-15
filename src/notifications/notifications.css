@@ -6,3 +6,68 @@
 .notice-message-row{display:flex;align-items:flex-start;gap:12px;margin-top:12px;min-width:0}
 .notice-avatar{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:50%;background:color-mix(in srgb,var(--notice-accent) 12%,var(--bloom-bg-expanded,#222));border:1px solid #ffffff1a;color:var(--bloom-text,#fff);font-size:14px;font-weight:600}
 .notice-message-content{min-width:0;flex:1}.notice-card.notice-message h3{margin:0 0 4px;font-size:13px}.notice-card.notice-message p{font-size:12px;line-height:1.55}.notice-message>.notice-source{color:var(--bloom-text-muted,#aaa)}
+
+.bloom-notifications footer{flex-wrap:wrap}.notice-local-history{flex:0 0 100%;font-size:10px;line-height:1.4;color:var(--bloom-text-muted,#aaa)}
+.bloom-notifications{container-type:inline-size}
+.bloom-notifications>header>div{min-width:0;flex:1}
+.bloom-notifications>header strong{overflow-wrap:anywhere}
+.notice-error{overflow-wrap:anywhere;white-space:normal;color:var(--dn-error,#f0b5a5);font-size:11px;line-height:1.5}
+@container (max-width:240px){
+ .bloom-notifications footer{justify-content:flex-end;gap:6px;padding:8px 4px 2px}
+ .bloom-notifications footer button{box-sizing:border-box;min-width:32px;width:32px;height:32px;min-height:32px;padding:0;justify-content:center;flex-shrink:0}
+ .notice-open-windows>span,.notice-open-history>span{display:none}
+ .bloom-notifications>header{padding:4px;gap:5px}
+ .bloom-notifications>header>div{display:block}
+ .bloom-notifications>header>div>svg{display:none}
+ .bloom-notifications>header strong{display:block;font-size:11px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .notice-source time{display:none}
+ .notice-message-row{gap:6px}
+ .notice-message-row .notice-avatar{width:28px;height:28px;flex:0 0 28px;font-size:10px}
+ .notice-local-history{font-size:9px}
+}
+/* At extreme zoom/short work areas, scroll the complete panel. A zero-height
+   message list would otherwise put every message behind the fixed chrome. */
+@container (max-height:180px){
+ .bloom-notifications{display:block;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+ .bloom-notifications>header{position:sticky;top:0;z-index:2;background:var(--bloom-bg-expanded,#000)}
+ .bloom-notifications>.notice-list{height:auto;max-height:none;overflow:visible;flex:none}
+}
+.bloom-notifications.notice-short{display:block;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scroll-padding-top:calc(var(--notice-header-height,40px) + 2px);scroll-padding-bottom:2px}
+.bloom-notifications.notice-short>header{position:sticky;top:0;z-index:2;background:var(--bloom-bg-expanded,#000)}
+.bloom-notifications.notice-short>.notice-list{height:auto;max-height:none;overflow:visible;flex:none}
+.bloom-notifications.notice-short.notice-tiny{scroll-padding-top:2px}
+.bloom-notifications.notice-short.notice-tiny>header{position:static}
+.bloom-notifications.notice-tiny footer button,.bloom-notifications.notice-tiny .notice-control,.bloom-notifications.notice-tiny .notice-source button{
+ height:max(24px,min(32px,calc(var(--notice-panel-height,40px) - 4px)));
+ min-height:max(24px,min(32px,calc(var(--notice-panel-height,40px) - 4px)));
+}
+.bloom-notifications.notice-narrow .notice-card{padding:10px;}
+.bloom-notifications.notice-narrow .notice-source{gap:4px;}
+.bloom-notifications.notice-narrow .notice-source strong{font-size:10px;}
+.bloom-notifications.notice-narrow .notice-app-icon{width:16px;height:16px;}
+.bloom-notifications.notice-narrow .notice-message-row{flex-direction:column;align-items:flex-start;gap:6px;}
+.bloom-notifications.notice-narrow .notice-message-row>div:last-child{width:100%;min-width:0;}
+.bloom-notifications.notice-narrow .notice-message-row .notice-avatar{width:24px;height:24px;flex:0 0 24px;}
+.bloom-notifications.notice-narrow .notice-card h3{font-size:12px;line-height:1.4;margin-top:4px;}
+
+/* A message has one surface, with an explicit sender and a reachable close. */
+.bloom-notifications,.notification-settings{font-family:var(--dn-font,"Segoe UI Variable","Segoe UI",sans-serif)}
+.bloom-notifications>header{padding:8px 10px 10px;gap:8px}
+.bloom-notifications header strong{font-size:13px;font-weight:600;line-height:1.4}
+.notice-card{border-radius:12px;padding:12px;margin-bottom:8px}
+.notice-source{gap:7px;font-size:11px;line-height:1.4}
+.notice-source time{font-size:10px;opacity:.8}
+.notice-app-icon{width:22px;height:22px;border-radius:6px}
+.notice-card h3,.notice-card.notice-message h3{font-size:13px;font-weight:600;line-height:1.4}
+.notice-card p,.notice-card.notice-message p{font-size:12px;line-height:1.55}
+.notice-message-row{gap:10px;margin-top:10px}
+.notice-avatar{width:36px;height:36px;flex-basis:36px;font-size:13px}
+.notice-local-history,.bloom-notifications footer button{font-size:11px;line-height:1.5}
+html[data-bloom-unified] .bloom-notifications .notice-card{background:var(--dn-raised);border-color:var(--dn-border)}
+html[data-bloom-unified] .bloom-notifications .notice-card.style-glass{background:color-mix(in srgb,var(--notice-accent) 5%,var(--dn-raised))}
+html[data-bloom-unified] .bloom-notifications .notice-card.style-minimal{background:transparent;border-bottom-color:var(--dn-border)}
+html[data-bloom-unified] .bloom-notifications .notice-card p{color:var(--dn-muted)}
+html[data-bloom-unified] .bloom-notifications .notice-source{color:var(--dn-muted)}
+html[data-bloom-unified] .bloom-notifications .notice-source button{color:var(--dn-text)}
+html[data-bloom-unified] .bloom-notifications .notice-source button:hover{background:var(--dn-hover)}
+@container(max-width:240px){.bloom-notifications>header{padding:4px;gap:4px}.notice-source time{display:none}.notice-message-row{gap:6px}.notice-message-row .notice-avatar{width:28px;height:28px;flex-basis:28px;font-size:11px}.notice-local-history{font-size:10px}}

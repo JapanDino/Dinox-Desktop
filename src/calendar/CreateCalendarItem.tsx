@@ -1,5 +1,5 @@
 import {calendarError} from './errors';
-import {useId,useRef,useState,useEffect} from 'react';
+import {useId,useRef,useState,useEffect,useLayoutEffect} from 'react';
 import {createPortal} from 'react-dom';
 import {invoke} from '@tauri-apps/api/core';
 import {X,Check,CalendarDays,Clock3,ChevronDown,AlignLeft} from 'lucide-react';
@@ -8,16 +8,19 @@ import {locale} from '../i18n/core';
 import {makeDraft} from './accounts';
 import type {CalendarSource} from './model';
 import './sync.css';
-const localDate=(date:Date)=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
-export function CreateCalendarItem({sources,onClose,onSaved,initialKind='event',initialDate=new Date()}:{sources:CalendarSource[];onClose:()=>void;onSaved:()=>void;initialKind?:'event'|'task';initialDate?:Date}){
+import {composerDefaults,localCalendarDate} from './composerDefaults';
+export function CreateCalendarItem({sources,onClose,onSaved,initialKind='event',initialDate=new Date(),container,onOpenChange}:{sources:CalendarSource[];onClose:()=>void;onSaved:()=>void;initialKind?:'event'|'task';initialDate?:Date;container?:HTMLElement|null;onOpenChange?:(open:boolean)=>void}){
  const [kind,setKind]=useState(initialKind),[sourceId,setSourceId]=useState('');
  const [title,setTitle]=useState(''),[description,setDescription]=useState('');
- const [day,setDay]=useState(()=>localDate(initialDate)),[endDay,setEndDay]=useState(()=>localDate(initialDate));
- const [time,setTime]=useState('10:00'),[endTime,setEndTime]=useState('11:00'),[allDay,setAllDay]=useState(initialKind==='task');
+ const [initialSchedule]=useState(()=>composerDefaults(initialDate));
+ const [day,setDay]=useState(()=>initialKind==='task'?localCalendarDate(initialDate):initialSchedule.day),[endDay,setEndDay]=useState(initialSchedule.endDay);
+ const [time,setTime]=useState(initialSchedule.time),[endTime,setEndTime]=useState(initialSchedule.endTime),[allDay,setAllDay]=useState(initialKind==='task');
  const [details,setDetails]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[saved,setSaved]=useState(false),[uncertain,setUncertain]=useState(false);
  const detailsId=useId(),request=useRef(crypto.randomUUID()),root=useRef<HTMLDivElement>(null),previous=useRef(document.activeElement as HTMLElement|null);
  const options=sources.filter(s=>s.writable&&s.kind===kind),source=options.find(s=>s.id===sourceId)||options[0],dateOnly=kind==='task'&&source?.provider==='google';
  const hasTime=!allDay&&!dateOnly;
+ // Lock the owning island before focus/portal changes can trigger hover exit.
+ useLayoutEffect(()=>{onOpenChange?.(true);return()=>onOpenChange?.(false);},[onOpenChange]);
  useEffect(()=>{root.current?.querySelector<HTMLInputElement>('input')?.focus();return()=>previous.current?.focus();},[]);
  const change=()=>{request.current=crypto.randomUUID();setError('');};
  const submit=async()=>{
@@ -32,7 +35,7 @@ export function CreateCalendarItem({sources,onClose,onSaved,initialKind='event',
   }catch(e){setError(calendarError(e));if(/uncertain|Previous creation/i.test(String(e)))setUncertain(true);}
   finally{setBusy(false);}
  };
- return createPortal(<div className="cs-backdrop" onClick={e=>e.stopPropagation()}>
+ return createPortal(<div className={`cs-backdrop ${container?'cs-contained':''}`} onClick={e=>e.stopPropagation()}>
   <div ref={root} className={`cs-composer cs-quick-composer ${details?'cs-expanded':''}`} role="dialog" aria-modal="true" aria-label={tx('Создание записи','Create entry')} onKeyDown={e=>{
    if(e.key==='Escape'){e.preventDefault();e.stopPropagation();if(!busy)onClose();}
    if(e.key==='Tab'){
@@ -76,5 +79,5 @@ export function CreateCalendarItem({sources,onClose,onSaved,initialKind='event',
      <footer><button type="button" className="cs-cancel" disabled={busy} onClick={onClose}>{tx('Отмена','Cancel')}</button><button className="cs-primary" disabled={busy||uncertain||!source||!title.trim()}>{busy?tx('Сохранение…','Saving…'):tx('Создать','Create')}</button></footer>
     </form>}
   </div>
- </div>,document.body);
+ </div>,container||document.body);
 }
